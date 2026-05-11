@@ -11,7 +11,8 @@ My name is Yuhao Liu. I am an IBI1 student at the Zhejiang University – Univer
 
 <!-- 2. About Me: Hidden by default, displayed only after clicking the photo -->
 <div id="about-me-section" style="display: none; margin-top: 20px;">
-  ## About Me
+  
+## About Me
   I like reading online novels very much. Nice to meet you! 😊
 </div>
 
