@@ -1,43 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>youqishan's Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yuhao Liu | My Homepage</title>
+    <!-- Introduce online style frameworks & icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Color -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2c3e50',
+                        secondary: '#3498db',
+                    },
+                    fontFamily: {
+                        sans: ['system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            /* Card Float Up Animation */
+            .card-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-2;
+            }
+            .nav-link {
+                @apply px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors;
+            }
+        }
+    </style>
 </head>
-<body>
-  <h1>youqishan</h1>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <!-- Navigation Bar -->
+    <nav class="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-primary">Yuhao Liu</div>
+            <div class="hidden md:flex space-x-2">
+                <a href="#home" class="nav-link"><i class="fa-solid fa-house mr-1"></i>Home</a>
+                <a href="#about" class="nav-link"><i class="fa-solid fa-user mr-1"></i>About Me</a>
+                <a href="#study" class="nav-link"><i class="fa-solid fa-book mr-1"></i>Study</a>
+                <a href="#hobby" class="nav-link"><i class="fa-solid fa-gamepad mr-1"></i>Hobbies</a>
+            </div>
+        </div>
+    </nav>
 
-  <!-- Photo：Click to display/hide About Me -->
-  <img 
-    src="./virtual_photo.jpg" 
-    alt="My virtual photo" 
-    width="300" 
-    style="cursor: pointer; display: block; margin: 0 auto; border-radius: 8px;"
-    onclick="toggleAboutMe()"
-  >
+    <!-- Hero Section -->
+    <section id="home" class="pt-32 pb-20 px-4">
+        <div class="container mx-auto text-center">
+            <!-- 头像已替换为本地路径 -->
+            <img src="./virtual_photo.jpg" alt="Yuhao Liu的头像" 
+                 class="w-36 h-36 rounded-full mx-auto shadow-md border-4 border-white">
+            <h1 class="text-[2.5rem] font-bold mt-6 text-primary">Hi, I'm Yuhao Liu</h1>
+            <p class="text-gray-500 mt-3 text-lg">ZJE | IBI1 Student | Passionate about life and learning</p>
+            <div class="mt-8 flex justify-center gap-4">
+                <a href="#about" class="bg-secondary text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-colors">
+                    Learn More About Me
+                </a>
+            </div>
+        </div>
+    </section>
 
-  <hr>
+    <!-- About Me Card Section -->
+    <section id="about" class="py-16 px-4 bg-white">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-2xl font-bold text-center mb-12 text-primary">About Me</h2>
+            <div class="bg-gray-50 p-8 rounded-xl shadow card-hover">
+                <p class="leading-relaxed text-gray-700 text-lg">
+                    I am a student in the IBI1 major at the ZJE College, currently studying computer science and related foundational courses.
+                    I am now learning basic Python programming and simple website building, and I enjoy exploring various interesting small projects.
+                </p>
+            </div>
+        </div>
+    </section>
 
-  <h2>Welcome</h2>
-  <p>My name is Yuhao Liu. I am an IBI1 student at the Zhejiang University – University of Edinburgh (ZJE) Institute.</p>
-  <p>Click my virtual photo to know more about me!</p>
+    <!-- Study Section -->
+    <section id="study" class="py-16 px-4">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-2xl font-bold text-center mb-12 text-primary">Study</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow card-hover">
+                    <i class="fa-solid fa-code text-3xl text-secondary mb-4"></i>
+                    <h3 class="text-xl font-semibold">Python Programming</h3>
+                    <p class="text-gray-600 mt-2">Completed Practical series assignments, mastered loops, dictionaries, and data simulation basics.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow card-hover">
+                    <i class="fa-solid fa-globe text-3xl text-secondary mb-4"></i>
+                    <h3 class="text-xl font-semibold">GitHub Website Building</h3>
+                    <p class="text-gray-600 mt-2">Learned static HTML personal homepage and basic Markdown usage.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-  <!-- About Me: Hide at first -->
-  <div id="about-me-section" style="display: none; margin-top: 20px;">
-    <h2>About Me</h2>
-    <p>I like reading online novels very much. Nice to meet you! 😊</p>
-  </div>
+    <!-- Hobbies Section -->
+    <section id="hobby" class="py-16 px-4 bg-white">
+        <div class="container mx-auto max-w-4xl">
+            <h2 class="text-2xl font-bold text-center mb-12 text-primary">Hobbies</h2>
+            <div class="bg-gray-50 p-8 rounded-xl shadow card-hover text-center">
+                <i class="fa-solid fa-book-open text-4xl text-secondary mb-4"></i>
+                <p class="text-gray-700 text-lg">I enjoy reading online novels and relaxing, appreciating simple joys of daily life.</p>
+            </div>
+        </div>
+    </section>
 
-  <script>
-    function toggleAboutMe() {
-      const aboutSection = document.getElementById("about-me-section");
-      if (aboutSection.style.display === "none") {
-        aboutSection.style.display = "block";
-      } else {
-        aboutSection.style.display = "none";
-      }
-    }
-  </script>
+    <!-- 底部 -->
+    <footer class="bg-primary text-white py-6 text-center">
+        <p>© 2026 Yuhao Liu | GitHub Homepage</p>
+    </footer>
 </body>
 </html>
