@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>youqishan's Page</title>
+</head>
+<body>
+  <h1>youqishan</h1>
+
+  <!-- Photo：点击显示/隐藏About Me -->
+  <img 
+    src="./virtual_photo.jpg" 
+    alt="My virtual photo" 
+    width="300" 
+    style="cursor: pointer; display: block; margin: 0 auto; border-radius: 8px;"
+    onclick="toggleAboutMe()"
+  >
+
+  <hr>
+
+  <h2>Welcome</h2>
+  <p>My name is Yuhao Liu. I am an IBI1 student at the Zhejiang University – University of Edinburgh (ZJE) Institute.</p>
+
+  <!-- About Me: Hide at first -->
+  <div id="about-me-section" style="display: none; margin-top: 20px;">
+    <h2>About Me</h2>
+    <p>I like reading online novels very much. Nice to meet you! 😊</p>
+  </div>
+
+  <script>
+    function toggleAboutMe() {
+      const aboutSection = document.getElementById("about-me-section");
+      if (aboutSection.style.display === "none") {
+        aboutSection.style.display = "block";
+      } else {
+        aboutSection.style.display = "none";
+      }
+    }
+  </script>
+</body>
+</html>
