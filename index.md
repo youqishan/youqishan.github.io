@@ -2,12 +2,7 @@
 
 <!-- 1. My virtual photo: Click to toggle show/hide -->
 <img 
-  src="./profile_photo.jpg" 
-  alt="My virtual photo" 
-  width="300" 
-  style="cursor: pointer; display: block; margin: 0 auto; border-radius: 8px;"
-  onclick="toggleAboutMe()"
->
+  src="./profile_photo.jpg" alt="My virtual photo" width="300" style="cursor: pointer; display: block; margin: 0 auto; border-radius: 8px;" onclick="toggleAboutMe()">
 
 ---
 
