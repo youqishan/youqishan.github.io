@@ -27,9 +27,13 @@ Just open the link above.
 
 ## 📁 文件长这样 / File Structure
 youqishan.github.io/
+
 ├── index.html # 网页本体
+
 ├── virtual_photo.jpg # 我的头像
+
 ├── images/ # 轮播用的图
+
 └── README.md 
 
 ## 🛠️ 如果你也想整一个 / How to Use or Remix
@@ -56,3 +60,4 @@ Just double-click index.html to open it in your browser for preview.
 
 5. **放到 GitHub Pages**
 把整个文件夹推到一个叫 你的用户名.github.io 的仓库，等一两分钟就能在网上看到了，跟我的这个一样。
+Push the entire folder to a repository named yourusername.github.io, wait for a minute or two, and you'll be able to view it online just like mine.
