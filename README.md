@@ -22,7 +22,10 @@ Hey! This is my personal homepage to share my works. Feel free to look around!
 
 ## 🚀 直接看效果 / Live Site
 
-点这个链接就能打开：youqishan.github.io
+点这个链接就能打开：
+   ```bash
+   youqishan.github.io
+
 Just open the link above.
 
 ## 📁 文件长这样 / File Structure
@@ -50,7 +53,7 @@ Save your avatar as virtual_photo.jpg and place it in the root directory.
 轮播图片在 index.html 里找到 <!-- 图片轮播区 -->，把 <img src="..."> 的链接换成你的图。目前用的是网上的示例图，记得改哦。
 For the carousel images, locate in index.html, replace the link in <img src="..."> with your image path, and add the image to the directory
 
-3. **改字儿**
+3. **改个人信息**
 打开 index.html，把所有 youqishan 相关的文字改成你自己的信息
 Open index.html and replace all text related to youqishan with your own information, such as your name, introduction, major and other relevant details.
 
@@ -61,3 +64,13 @@ Just double-click index.html to open it in your browser for preview.
 5. **放到 GitHub Pages**
 把整个文件夹推到一个叫 你的用户名.github.io 的仓库，等一两分钟就能在网上看到了，跟我的这个一样。
 Push the entire folder to a repository named yourusername.github.io, wait for a minute or two, and you'll be able to view it online just like mine.
+
+## 🎨 轮播小设定 / Carousel Tweaks
+切换速度：在最后面的 <script> 里找到 autoIntervalTime = 2000;，数字是毫秒，改成你想要的时间就行。
+Speed: Find autoIntervalTime = 2000; in the script, change the number (ms) to adjust switch speed.
+
+动画快慢：轮播轨道上有个 duration-500，改成 duration-1000 会让过渡更慢一点。
+Transition Speed: Change duration-500 on the slider track class (e.g., duration-1000 for slower).
+
+图片高度：每张图片上有 h-64 md:h-96，这是高度设定，可以调。
+Image Height: Adjust the classes h-64 and md:h-96 on the images.
