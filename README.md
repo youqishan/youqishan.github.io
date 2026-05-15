@@ -50,8 +50,8 @@ youqishan.github.io/
 把自己的头像存成 virtual_photo.jpg 放到根目录。
 Save your avatar as virtual_photo.jpg and place it in the root directory.
 
-轮播图片在 index.html 里找到 **<!-- 图片轮播区 -->**，把 **<img src="...">** 的链接换成你的图。
-For the carousel images, locate in index.html, replace the link in **<img src="...">** with your image path, and add the image to the directory
+轮播图片在 index.html 里找到 **图片轮播区**，把 **img src="..."** 的链接换成你的图。
+For the carousel images, locate in index.html, replace the link in **img src="..."** with your image path, and add the image to the directory
 
 3. **改个人信息**
 打开 index.html，把所有 youqishan 相关的文字改成你自己的信息
