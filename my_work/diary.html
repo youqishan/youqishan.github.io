@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日记 | My Diary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div class="bg-white rounded-2xl shadow-lg p-8 max-w-lg w-full">
+        <h2 id="diaryTitle" class="text-2xl font-bold text-primary mb-2">日记</h2>
+        <p id="diaryDate" class="text-gray-500 mb-4"></p>
+        
+        <textarea id="diaryContent" rows="12" 
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary resize-none"
+                  placeholder="在这里写下今天的记录..."></textarea>
+        
+        <div class="flex items-center justify-between mt-4">
+            <button id="saveBtn" class="bg-secondary text-white px-6 py-2 rounded-full hover:bg-blue-600 transition">
+                <i class="fa-solid fa-floppy-disk mr-1"></i>保存
+            </button>
+            <span id="saveStatus" class="text-sm text-gray-500"></span>
+        </div>
+        
+        <div class="mt-6 text-center">
+            <a href="index.html" class="text-secondary hover:underline text-sm">
+                <i class="fa-solid fa-arrow-left mr-1"></i>返回日历
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 获取 URL 参数中的日期
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateStr = urlParams.get('date');
+
+        if (!dateStr || dateStr.length !== 8) {
+            document.getElementById('diaryTitle').textContent = '无效日期';
+            document.getElementById('diaryContent').disabled = true;
+            document.getElementById('saveBtn').disabled = true;
+        } else {
+            // 格式化日期显示
+            const year = dateStr.substring(0, 4);
+            const month = dateStr.substring(4, 6);
+            const day = dateStr.substring(6, 8);
+            document.getElementById('diaryDate').textContent = `${year}年${month}月${day}日`;
+
+            const storageKey = `diary_${dateStr}`;
+            const contentEl = document.getElementById('diaryContent');
+            const saveBtn = document.getElementById('saveBtn');
+            const saveStatus = document.getElementById('saveStatus');
+
+            // 从 localStorage 加载已有日记
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                contentEl.value = saved;
+            }
+
+            // 保存按钮
+            saveBtn.addEventListener('click', () => {
+                const text = contentEl.value;
+                localStorage.setItem(storageKey, text);
+                saveStatus.textContent = '已保存 ✓';
+                setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+            });
+
+            // 自动保存（可选）：失去焦点时保存
+            contentEl.addEventListener('blur', () => {
+                localStorage.setItem(storageKey, contentEl.value);
+            });
+        }
+    </script>
+</body>
+</html>
