@@ -7,12 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* 月历表格样式微调 */
-        table td, table th {
+        table td:hover {
+            background: white;
+            cursor: pointer;
             transition: background 0.2s;
         }
+        /* 让今天的高亮覆盖 hover 背景 */
         table td:hover {
-            background: #ebf5ff;
+            background: #720E0E;
             cursor: default;
         }
     </style>
@@ -20,7 +22,6 @@
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center justify-center p-6">
 
     <div class="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
-        <!-- 标题与月份切换 -->
         <div class="flex items-center justify-between mb-6">
             <button id="prevMonth" class="p-2 rounded-lg hover:bg-gray-100 transition">
                 <i class="fa-solid fa-chevron-left"></i>
@@ -31,7 +32,6 @@
             </button>
         </div>
 
-        <!-- 月历表格 -->
         <table class="w-full text-center">
             <thead>
                 <tr class="text-gray-500 text-sm">
@@ -47,15 +47,19 @@
             <tbody id="calendarBody"></tbody>
         </table>
 
-        <!-- 返回首页 -->
         <div class="mt-8 text-center">
             <a href="/" class="text-secondary hover:underline text-sm">
-                <i class="fa-solid fa-arrow-left mr-1"></i>返回首页 / Back to Home
+                <i class="fa-solid fa-arrow-left mr-1"></i>返回首页
             </a>
         </div>
     </div>
 
     <script>
+        // 跳转到日记页
+        function openDiary(dateStr) {
+            window.location.href = `diary.html?date=${dateStr}`;
+        }
+
         const monthYearEl = document.getElementById('monthYear');
         const calendarBody = document.getElementById('calendarBody');
         const prevBtn = document.getElementById('prevMonth');
@@ -67,18 +71,13 @@
             const year = date.getFullYear();
             const month = date.getMonth();
 
-            // 设置头部年月
             monthYearEl.textContent = `${year} 年 ${month + 1} 月`;
 
-            // 当月第一天是星期几（0=周日, 6=周六）
             const firstDay = new Date(year, month, 1).getDay();
-            // 当月总天数
             const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            // 生成表格行
             let html = '';
             let dayCount = 1;
-            const totalCells = 42; // 6行7列
 
             for (let i = 0; i < 6; i++) {
                 html += '<tr>';
@@ -87,11 +86,13 @@
                     if (cellIndex < firstDay || dayCount > daysInMonth) {
                         html += '<td class="py-2 text-gray-300"></td>';
                     } else {
-                        // 判断是否为今天
                         const today = new Date();
                         const isToday = (year === today.getFullYear() && month === today.getMonth() && dayCount === today.getDate());
-                        const todayClass = isToday ? 'bg-secondary text-white rounded-full' : 'hover:bg-blue-50';
-                        html += `<td class="py-2"><span class="inline-block w-8 h-8 leading-8 ${todayClass}">${dayCount}</span></td>`;
+                        const todayClass = isToday ? 'bg-secondary text-white rounded-full' : '';
+                        const dateStr = `${year}${String(month + 1).padStart(2, '0')}${String(dayCount).padStart(2, '0')}`;
+                        html += `<td class="py-2" onclick="openDiary('${dateStr}')">
+                                    <span class="inline-block w-8 h-8 leading-8 ${todayClass} rounded-full">${dayCount}</span>
+                                 </td>`;
                         dayCount++;
                     }
                 }
@@ -111,7 +112,6 @@
             renderCalendar(currentDate);
         });
 
-        // 初始显示
         renderCalendar(currentDate);
     </script>
 </body>
