@@ -7,25 +7,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* 每个日期格子的基础样式 */
         table td {
             cursor: pointer;
             transition: background 0.2s, color 0.2s;
         }
-        /* 鼠标悬停时：整个格子背景变成暗红色 */
         table td:hover {
             background: #720E0E;
         }
-        /* 悬停时格子内的文字（包括数字）统一变为白色 */
         table td:hover span {
             color: white;
         }
-        /* 今天日期的默认样式：亮红色背景 + 白色文字 */
         .today-highlight {
             background-color: #e74c3c;
             color: white;
         }
-        /* 悬停今天日期时，背景也跟随变为暗红色 */
         table td:hover .today-highlight {
             background-color: #720E0E;
         }
@@ -67,11 +62,6 @@
     </div>
 
     <script>
-        // 跳转到日记页（diary.html?date=YYYYMMDD）
-        function openDiary(dateStr) {
-            window.location.href = `diary.html?date=${dateStr}`;
-        }
-
         const monthYearEl = document.getElementById('monthYear');
         const calendarBody = document.getElementById('calendarBody');
         const prevBtn = document.getElementById('prevMonth');
@@ -100,11 +90,14 @@
                     } else {
                         const today = new Date();
                         const isToday = (year === today.getFullYear() && month === today.getMonth() && dayCount === today.getDate());
-                        // 如果是今天，添加 today-highlight 类（亮红色背景）；否则不加任何背景类
                         const todayClass = isToday ? 'today-highlight rounded-full' : '';
                         const dateStr = `${year}${String(month + 1).padStart(2, '0')}${String(dayCount).padStart(2, '0')}`;
-                        html += `<td class="py-2" onclick="openDiary('${dateStr}')">
-                                    <span class="inline-block w-8 h-8 leading-8 ${todayClass}">${dayCount}</span>
+                        // ★ 关键修改：使用 <a> 标签替代 window.location.href
+                        html += `<td class="py-2">
+                                    <a href="diary.html?date=${dateStr}" target="_blank"
+                                       style="text-decoration: none; color: inherit; display: block;">
+                                        <span class="inline-block w-8 h-8 leading-8 ${todayClass}">${dayCount}</span>
+                                    </a>
                                  </td>`;
                         dayCount++;
                     }
@@ -125,7 +118,6 @@
             renderCalendar(currentDate);
         });
 
-        // 首次加载
         renderCalendar(currentDate);
     </script>
 </body>
