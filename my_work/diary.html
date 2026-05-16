@@ -3,34 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日记 | My Diary</title>
+    <title>日记查看</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 引入 marked.js 用于 Markdown 渲染 -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* 预览区样式，保持与编辑器协调 */
-        .markdown-preview {
-            min-height: 300px;
+        .markdown-body {
             padding: 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
             background: white;
-            overflow-y: auto;
+            border-radius: 0.75rem;
+            line-height: 1.7;
         }
-        .markdown-preview h1 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0.5rem; }
-        .markdown-preview h2 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; }
-        .markdown-preview h3 { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.4rem; }
-        .markdown-preview p { margin-bottom: 0.8rem; line-height: 1.6; }
-        .markdown-preview ul, .markdown-preview ol { margin-left: 1.5rem; margin-bottom: 0.8rem; }
-        .markdown-preview li { margin-bottom: 0.3rem; }
-        .markdown-preview code {
+        .markdown-body h1 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0.8rem; }
+        .markdown-body h2 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.6rem; }
+        .markdown-body h3 { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.4rem; }
+        .markdown-body p { margin-bottom: 1rem; }
+        .markdown-body ul, .markdown-body ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        .markdown-body code {
             background: #f3f4f6;
-            padding: 0.15rem 0.4rem;
+            padding: 0.2em 0.4em;
             border-radius: 0.25rem;
             font-size: 0.9em;
         }
-        .markdown-preview pre {
+        .markdown-body pre {
             background: #1f2937;
             color: #f9fafb;
             padding: 1rem;
@@ -38,55 +33,25 @@
             overflow-x: auto;
             margin-bottom: 1rem;
         }
-        .markdown-preview blockquote {
+        .markdown-body blockquote {
             border-left: 4px solid #9ca3af;
             padding-left: 1rem;
             color: #4b5563;
-            margin-bottom: 0.8rem;
+            margin-bottom: 1rem;
         }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center justify-center p-6">
 
-    <div class="bg-white rounded-2xl shadow-lg p-8 max-w-6xl w-full">
+    <div class="bg-white rounded-2xl shadow-lg p-8 max-w-3xl w-full">
         <h2 id="diaryTitle" class="text-2xl font-bold text-primary mb-2">日记</h2>
         <p id="diaryDate" class="text-gray-500 mb-6"></p>
         
-        <!-- 编辑 + 预览 双栏容器 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- 左侧：编辑器 -->
-            <div class="flex flex-col">
-                <label class="text-sm font-medium text-gray-600 mb-2">
-                    <i class="fa-solid fa-pen-to-square mr-1"></i>编辑（支持 Markdown）
-                </label>
-                <textarea id="diaryContent" rows="16" 
-                          class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary resize-none font-mono flex-grow"
-                          placeholder="在这里用 Markdown 写日记...&#10;&#10;## 今日记录&#10;今天是美好的一天。"></textarea>
-            </div>
-
-            <!-- 右侧：预览区 -->
-            <div class="flex flex-col">
-                <label class="text-sm font-medium text-gray-600 mb-2">
-                    <i class="fa-solid fa-eye mr-1"></i>预览
-                </label>
-                <div id="previewArea" class="markdown-preview flex-grow"></div>
-            </div>
+        <div id="diaryContent" class="markdown-body">
+            <!-- 渲染内容将显示在这里 -->
         </div>
 
-        <!-- 操作按钮 -->
-        <div class="flex items-center justify-between mt-6 flex-wrap gap-2">
-            <div class="flex gap-2">
-                <button id="saveToGitHub" class="bg-secondary text-white px-6 py-2 rounded-full hover:bg-blue-600 transition">
-                    <i class="fa-brands fa-github mr-1"></i>同步到 GitHub
-                </button>
-                <button id="downloadBtn" class="bg-green-600 text-white px-6 py-2 rounded-full hover:bg-green-700 transition">
-                    <i class="fa-solid fa-download mr-1"></i>下载到本地
-                </button>
-            </div>
-            <span id="saveStatus" class="text-sm text-gray-500"></span>
-        </div>
-        
-        <div class="mt-6 text-center">
+        <div class="mt-8 text-center">
             <a href="index.html" class="text-secondary hover:underline text-sm">
                 <i class="fa-solid fa-arrow-left mr-1"></i>返回日历
             </a>
@@ -94,190 +59,38 @@
     </div>
 
     <script>
-        // ================== 配置 ==================
-        const GITHUB_TOKEN = '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';  // ⚠️ 替换成你自己的 Token
-        const REPO_OWNER = 'youqishan';
-        const REPO_NAME = 'youqishan.github.io';
-        const BRANCH = 'main';
-        const FILE_BASE_PATH = 'my_work/diary';   // 文件存放目录
-        // =========================================
-
         const urlParams = new URLSearchParams(window.location.search);
         const dateStr = urlParams.get('date');
+        const contentDiv = document.getElementById('diaryContent');
+        const dateEl = document.getElementById('diaryDate');
 
-        const diaryTitle = document.getElementById('diaryTitle');
-        const diaryDate = document.getElementById('diaryDate');
-        const contentEl = document.getElementById('diaryContent');
-        const previewArea = document.getElementById('previewArea');
-        const saveToGitHubBtn = document.getElementById('saveToGitHub');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const saveStatus = document.getElementById('saveStatus');
+        // 构造 GitHub Raw URL
+        const rawUrl = `https://raw.githubusercontent.com/youqishan/youqishan.github.io/main/my_work/diary/${dateStr}.md`;
 
-        let currentFileSha = null;
-
-        // ---------- 工具函数 ----------
-        function showStatus(msg, isGood = true) {
-            saveStatus.textContent = msg;
-            saveStatus.className = `text-sm ${isGood ? 'text-green-600' : 'text-red-500'}`;
-            setTimeout(() => { saveStatus.textContent = ''; }, 3000);
-        }
-
-        function getStorageKey() {
-            return `diary_${dateStr}`;
-        }
-
-        function getRemoteFileUrl() {
-            return `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${FILE_BASE_PATH}/${dateStr}.md`;
-        }
-
-        function getApiUrl() {
-            return `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_BASE_PATH}/${dateStr}.md`;
-        }
-
-        // ---------- Markdown 渲染 ----------
-        function renderPreview(markdownText) {
-            if (markdownText.trim() === '') {
-                previewArea.innerHTML = '<p class="text-gray-400 italic">尚无内容，开始写点什么吧...</p>';
-                return;
-            }
-            // 使用 marked 渲染，避免 XSS（默认转义 HTML 标签）
-            const html = marked.parse(markdownText);
-            previewArea.innerHTML = html;
-        }
-
-        // 监听编辑器输入，实时更新预览
-        contentEl.addEventListener('input', () => {
-            renderPreview(contentEl.value);
-        });
-
-        // ---------- 加载日记内容 ----------
         async function loadDiary() {
             if (!dateStr || dateStr.length !== 8) {
-                diaryTitle.textContent = '无效日期';
-                contentEl.disabled = true;
-                saveToGitHubBtn.disabled = true;
-                downloadBtn.disabled = true;
+                contentDiv.innerHTML = '<p class="text-red-500">无效的日期</p>';
                 return;
             }
 
             const year = dateStr.substring(0, 4);
             const month = dateStr.substring(4, 6);
             const day = dateStr.substring(6, 8);
-            diaryDate.textContent = `${year}年${month}月${day}日`;
+            dateEl.textContent = `${year}年${month}月${day}日`;
 
-            // 1. 尝试从 GitHub 读取
             try {
-                const response = await fetch(getRemoteFileUrl());
+                const response = await fetch(rawUrl);
                 if (response.ok) {
-                    const text = await response.text();
-                    contentEl.value = text;
-                    renderPreview(text);   // 立即渲染预览
-                    await fetchFileSha();
-                    localStorage.setItem(getStorageKey(), text);
-                    showStatus('已加载远程日记', true);
-                    return;
-                }
-            } catch (e) {
-                console.log('远程读取失败，尝试本地缓存', e);
-            }
-
-            // 2. 从 localStorage 回退
-            const local = localStorage.getItem(getStorageKey());
-            if (local) {
-                contentEl.value = local;
-                renderPreview(local);
-                showStatus('已加载本地缓存', true);
-            } else {
-                contentEl.value = '';
-                renderPreview('');
-                showStatus('新日记', true);
-            }
-        }
-
-        // 获取文件 SHA
-        async function fetchFileSha() {
-            try {
-                const res = await fetch(getApiUrl(), {
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    currentFileSha = data.sha;
-                }
-            } catch (e) {
-                console.log('获取 SHA 失败');
-            }
-        }
-
-        // ---------- 保存到 GitHub ----------
-        async function saveToGitHub() {
-            const content = contentEl.value;
-            // 支持中文 Base64 编码
-            const base64Content = btoa(unescape(encodeURIComponent(content)));
-
-            const body = {
-                message: `Update diary ${dateStr}`,
-                content: base64Content,
-                branch: BRANCH
-            };
-
-            if (currentFileSha) {
-                body.sha = currentFileSha;
-            }
-
-            try {
-                const res = await fetch(getApiUrl(), {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify(body)
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    currentFileSha = data.content.sha;
-                    localStorage.setItem(getStorageKey(), content);
-                    showStatus('已同步到 GitHub ✓', true);
+                    const markdown = await response.text();
+                    contentDiv.innerHTML = marked.parse(markdown);
                 } else {
-                    const err = await res.json();
-                    showStatus(`同步失败: ${err.message}`, false);
+                    contentDiv.innerHTML = '<p class="text-gray-400 italic">暂无日记</p>';
                 }
             } catch (e) {
-                showStatus(`网络错误: ${e.message}`, false);
+                contentDiv.innerHTML = '<p class="text-red-500">加载失败，请检查网络</p>';
             }
         }
 
-        // ---------- 下载到本地 ----------
-        function downloadDiary() {
-            const text = contentEl.value;
-            const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `日记_${dateStr}.md`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showStatus('已下载 ✓', true);
-        }
-
-        // ---------- 事件绑定 ----------
-        saveToGitHubBtn.addEventListener('click', saveToGitHub);
-        downloadBtn.addEventListener('click', downloadDiary);
-
-        // 失去焦点时自动保存到 localStorage
-        contentEl.addEventListener('blur', () => {
-            localStorage.setItem(getStorageKey(), contentEl.value);
-        });
-
-        // ---------- 启动 ----------
         loadDiary();
     </script>
 </body>
