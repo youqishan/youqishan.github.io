@@ -75,28 +75,47 @@
     </div>
 
     <script>
-        // 从 localStorage 获取所有有日记的日期 (格式 YYYYMMDD)
-        function getDiaryDates() {
-            const dates = new Set();
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('diary_')) {
-                    const dateStr = key.replace('diary_', '');
-                    if (/^\d{8}$/.test(dateStr)) {
-                        dates.add(dateStr);
-                    }
+        // ========== 配置 ==========
+        const REPO_OWNER = 'youqishan';
+        const REPO_NAME = 'youqishan.github.io';
+        const BRANCH = 'master';           // 你的仓库默认分支
+        const DIARY_DIR = 'my_work/diary'; // 日记文件目录
+
+        // ========== 从 GitHub API 获取有日记的日期集合 ==========
+        async function fetchDiaryDates() {
+            const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DIARY_DIR}?ref=${BRANCH}`;
+            try {
+                const res = await fetch(apiUrl);
+                if (!res.ok) {
+                    console.warn('获取日记列表失败，状态码:', res.status);
+                    return new Set();
                 }
+                const files = await res.json();
+                // 提取文件名中的日期部分 (YYYYMMDD.md → YYYYMMDD)
+                const dateSet = new Set();
+                files.forEach(file => {
+                    if (file.type === 'file' && file.name.endsWith('.md')) {
+                        const dateStr = file.name.replace('.md', '');
+                        if (/^\d{8}$/.test(dateStr)) {
+                            dateSet.add(dateStr);
+                        }
+                    }
+                });
+                return dateSet;
+            } catch (err) {
+                console.error('获取日记列表出错:', err);
+                return new Set(); // 失败时返回空集合，不影响日历正常显示
             }
-            return dates;
         }
 
+        // ========== 日历逻辑 ==========
         const monthYearEl = document.getElementById('monthYear');
         const calendarBody = document.getElementById('calendarBody');
         const prevBtn = document.getElementById('prevMonth');
         const nextBtn = document.getElementById('nextMonth');
 
         let currentDate = new Date();
-        const diaryDates = getDiaryDates(); // 页面加载时读取一次（如需实时更新可每次渲染时重新读取）
+        let diaryDates = new Set(); // 存储有日记的日期
 
         function renderCalendar(date) {
             const year = date.getFullYear();
@@ -106,12 +125,6 @@
 
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            // 如果需要每次渲染都重新检查 localStorage（例如在另一个标签页保存了日记），可以在这里调用 getDiaryDates()
-            // 但为了性能，此处用初始化时的集合，你也可以改为： const diaryDates = getDiaryDates();
-            // 如果你希望标记实时更新，去掉上面全局的 const diaryDates，在这里调用 const diaryDates = getDiaryDates();
-            // 这里为了简洁，我保留全局读取，但建议改为实时读取，如下：
-            const liveDiaryDates = getDiaryDates(); // 每次都重新读取，保证刚刚保存的日记能立即显示标记
 
             let html = '';
             let dayCount = 1;
@@ -127,9 +140,9 @@
                         const isToday = (year === today.getFullYear() && month === today.getMonth() && dayCount === today.getDate());
                         const todayClass = isToday ? 'today-highlight rounded-full' : '';
                         const dateStr = `${year}${String(month + 1).padStart(2, '0')}${String(dayCount).padStart(2, '0')}`;
-                        const hasDiary = liveDiaryDates.has(dateStr);
-                        
-                        // 构建日期单元格，内含链接和可能的三角标记
+                        const hasDiary = diaryDates.has(dateStr);
+
+                        // 日期单元格：链接 + 可能的三角标记
                         html += `<td class="py-2 relative">
                                     <a href="diary.html?date=${dateStr}" style="text-decoration: none; color: inherit; display: block; position: relative;">
                                         <span class="inline-block w-8 h-8 leading-8 ${todayClass}">${dayCount}</span>
@@ -145,6 +158,7 @@
             calendarBody.innerHTML = html;
         }
 
+        // ========== 月份切换 ==========
         prevBtn.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderCalendar(currentDate);
@@ -155,7 +169,11 @@
             renderCalendar(currentDate);
         });
 
-        renderCalendar(currentDate);
+        // ========== 初始化：先获取日记列表，再渲染日历 ==========
+        (async function init() {
+            diaryDates = await fetchDiaryDates();
+            renderCalendar(currentDate);
+        })();
     </script>
 </body>
 </html>
