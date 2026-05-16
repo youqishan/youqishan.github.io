@@ -10,6 +10,7 @@
         table td {
             cursor: pointer;
             transition: background 0.2s, color 0.2s;
+            position: relative;
         }
         table td:hover {
             background: #720E0E;
@@ -23,6 +24,18 @@
         }
         table td:hover .today-highlight {
             background-color: #720E0E;
+        }
+        /* 日记标记小三角 */
+        .diary-marker {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 6px solid #facc15; /* 黄色三角 */
         }
     </style>
 </head>
@@ -62,12 +75,28 @@
     </div>
 
     <script>
+        // 从 localStorage 获取所有有日记的日期 (格式 YYYYMMDD)
+        function getDiaryDates() {
+            const dates = new Set();
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('diary_')) {
+                    const dateStr = key.replace('diary_', '');
+                    if (/^\d{8}$/.test(dateStr)) {
+                        dates.add(dateStr);
+                    }
+                }
+            }
+            return dates;
+        }
+
         const monthYearEl = document.getElementById('monthYear');
         const calendarBody = document.getElementById('calendarBody');
         const prevBtn = document.getElementById('prevMonth');
         const nextBtn = document.getElementById('nextMonth');
 
         let currentDate = new Date();
+        const diaryDates = getDiaryDates(); // 页面加载时读取一次（如需实时更新可每次渲染时重新读取）
 
         function renderCalendar(date) {
             const year = date.getFullYear();
@@ -77,6 +106,12 @@
 
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // 如果需要每次渲染都重新检查 localStorage（例如在另一个标签页保存了日记），可以在这里调用 getDiaryDates()
+            // 但为了性能，此处用初始化时的集合，你也可以改为： const diaryDates = getDiaryDates();
+            // 如果你希望标记实时更新，去掉上面全局的 const diaryDates，在这里调用 const diaryDates = getDiaryDates();
+            // 这里为了简洁，我保留全局读取，但建议改为实时读取，如下：
+            const liveDiaryDates = getDiaryDates(); // 每次都重新读取，保证刚刚保存的日记能立即显示标记
 
             let html = '';
             let dayCount = 1;
@@ -92,11 +127,13 @@
                         const isToday = (year === today.getFullYear() && month === today.getMonth() && dayCount === today.getDate());
                         const todayClass = isToday ? 'today-highlight rounded-full' : '';
                         const dateStr = `${year}${String(month + 1).padStart(2, '0')}${String(dayCount).padStart(2, '0')}`;
-                        // ★ 关键修改：使用 <a> 标签替代 window.location.href
-                        html += `<td class="py-2">
-                                    <a href="diary.html?date=${dateStr}" target="_blank"
-                                       style="text-decoration: none; color: inherit; display: block;">
+                        const hasDiary = liveDiaryDates.has(dateStr);
+                        
+                        // 构建日期单元格，内含链接和可能的三角标记
+                        html += `<td class="py-2 relative">
+                                    <a href="diary.html?date=${dateStr}" style="text-decoration: none; color: inherit; display: block; position: relative;">
                                         <span class="inline-block w-8 h-8 leading-8 ${todayClass}">${dayCount}</span>
+                                        ${hasDiary ? '<div class="diary-marker"></div>' : ''}
                                     </a>
                                  </td>`;
                         dayCount++;
