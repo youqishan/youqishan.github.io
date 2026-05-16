@@ -36,6 +36,54 @@
     </style>
     <!-- 轮播额外样式 -->
     <style>
+        /* 迷你月历样式 */
+        .mini-calendar {
+            width: 180px;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+        }
+        .mini-calendar:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .mini-calendar table {
+            width: 100%;
+            font-size: 0.75rem;
+            color: #4b5563;
+        }
+        .mini-calendar th {
+            font-weight: 500;
+            color: #9ca3af;
+            padding: 2px;
+        }
+        .mini-calendar td {
+            padding: 2px;
+            line-height: 1.2;
+        }
+        .mini-calendar .today {
+            background-color: #e74c3c;
+            color: white;
+            border-radius: 9999px;
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            font-size: 0.7rem;
+        }
+        .mini-calendar .month-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
         /* 圆点指示器过渡效果 */
         #dotsContainer button {
             transition: all 0.2s ease;
@@ -57,12 +105,28 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!-- Hero Section（修改后：头像旁添加迷你月历） -->
     <section id="home" class="pt-32 pb-20 px-4">
         <div class="container mx-auto text-center">
-            <!-- Virtual Photo -->
-            <img src="./virtual_photo.jpg" alt="youqishan virtual photo" 
-                 class="w-36 h-36 rounded-full mx-auto shadow-md border-4 border-white">
+            <!-- 弹性布局：头像 + 月历 -->
+            <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                <!-- 头像区域 -->
+                <div class="flex-shrink-0">
+                    <img src="./virtual_photo.jpg" alt="youqishan virtual photo" 
+                         class="w-36 h-36 rounded-full mx-auto shadow-md border-4 border-white">
+                </div>
+                <!-- 迷你月历 -->
+                <div class="mini-calendar" onclick="window.location.href='/my_work/'" id="miniCalendar">
+                    <div class="month-title" id="miniMonthYear"></div>
+                    <table>
+                        <thead>
+                            <tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr>
+                        </thead>
+                        <tbody id="miniCalendarBody"></tbody>
+                    </table>
+                    <div class="text-xs text-gray-400 mt-1">点击查看月历</div>
+                </div>
+            </div>
             <h1 class="text-[2.5rem] font-bold mt-6 text-primary">Hi, I'm youqishan</h1>
             <p class="text-gray-500 mt-3 text-lg">ZJE | IBI1 Student | Passionate about life and learning</p>
             <div class="mt-8 flex justify-center gap-4">
@@ -247,5 +311,45 @@
             startAuto();
         })();
     </script>
+
+<!-- 迷你月历脚本 -->
+    <script>
+        (function() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const monthYearEl = document.getElementById('miniMonthYear');
+            const calendarBody = document.getElementById('miniCalendarBody');
+            
+            monthYearEl.textContent = `${year}年${month + 1}月`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const todayDate = now.getDate();
+            
+            let html = '';
+            let dayCount = 1;
+            for (let i = 0; i < 6; i++) {
+                html += '<tr>';
+                for (let j = 0; j < 7; j++) {
+                    const cellIndex = i * 7 + j;
+                    if (cellIndex < firstDay || dayCount > daysInMonth) {
+                        html += '<td></td>';
+                    } else {
+                        if (dayCount === todayDate) {
+                            html += `<td><span class="today">${dayCount}</span></td>`;
+                        } else {
+                            html += `<td>${dayCount}</td>`;
+                        }
+                        dayCount++;
+                    }
+                }
+                html += '</tr>';
+                if (dayCount > daysInMonth) break;
+            }
+            calendarBody.innerHTML = html;
+        })();
+    </script>
+
 </body>
 </html>
