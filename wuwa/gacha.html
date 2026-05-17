@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽卡模拟器 | 鸣潮特辑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gacha-card {
+            transition: transform 0.6s, box-shadow 0.3s;
+            transform-style: preserve-3d;
+        }
+        .gacha-card.flip {
+            transform: rotateY(180deg);
+        }
+        .rarity-5 { border-color: #fbbf24; box-shadow: 0 0 15px #fbbf24; }
+        .rarity-4 { border-color: #a78bfa; box-shadow: 0 0 10px #a78bfa; }
+        .rarity-3 { border-color: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
+
+    <h1 class="text-4xl font-bold mt-8 mb-2">🌊 抽卡模拟器</h1>
+    <p class="text-gray-400 mb-2">Wuthering Waves · 共鸣者召集</p>
+
+    <!-- 抽卡计数与保底提示 -->
+    <div class="mb-6 text-center">
+        <span class="text-yellow-400">累计抽卡：<span id="pity-counter">0</span> 抽</span> &nbsp;|&nbsp;
+        <span class="text-purple-400">保底剩余：<span id="guarantee-left">70</span> 抽</span>
+    </div>
+
+    <!-- 抽卡按钮 -->
+    <div class="flex gap-4 mb-10">
+        <button id="single-pull" class="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-full text-lg transition">
+            单抽 <i class="fa-solid fa-dice-one ml-1"></i>
+        </button>
+        <button id="multi-pull" class="bg-purple-600 hover:bg-purple-500 px-8 py-3 rounded-full text-lg transition">
+            十连抽 <i class="fa-solid fa-dice-d10 ml-1"></i>
+        </button>
+    </div>
+
+    <!-- 抽卡结果展示区（横向滚动） -->
+    <div id="result-area" class="flex gap-4 overflow-x-auto w-full max-w-5xl p-4 min-h-[200px] items-center">
+        <p class="text-gray-500 w-full text-center">点击抽卡按钮开始</p>
+    </div>
+
+    <!-- 历史记录 -->
+    <div class="w-full max-w-5xl mt-12">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">抽卡历史</h2>
+            <button id="clear-history" class="text-red-400 hover:text-red-300 text-sm">
+                <i class="fa-solid fa-trash-can mr-1"></i>清空记录
+            </button>
+        </div>
+        <div id="history-list" class="space-y-2 max-h-60 overflow-y-auto bg-gray-800 rounded-xl p-4">
+            <p class="text-gray-500 text-center">暂无记录</p>
+        </div>
+    </div>
+
+    <div class="mt-10 text-center">
+        <a href="/wuwa/" class="text-blue-400 hover:text-blue-300 transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i>返回鸣潮特辑
+        </a>
+    </div>
+
+    <script>
+        // ================= 卡池数据 =================
+        // 你可以替换成自己的角色数据，这里用内置数据演示
+        const pool = {
+            fiveStar: [
+                { name: '漂泊者', element: '光', weapon: '单手剑', rarity: 5, image: '../wuwa/assets/characters/rover.jpg' },
+                { name: '吟霖', element: '雷', weapon: '臂铠', rarity: 5, image: '../wuwa/assets/characters/yinlin.jpg' }
+            ],
+            fourStar: [
+                { name: '秧秧', element: '冰', weapon: '长刃', rarity: 4, image: '../wuwa/assets/characters/yanyan.jpg' },
+                { name: '神秘角色A', element: '风', weapon: '长刃', rarity: 4, image: '' },
+                { name: '神秘角色B', element: '火', weapon: '臂铠', rarity: 4, image: '' }
+            ],
+            threeStar: [
+                { name: '铁剑', type: '武器', rarity: 3, image: '' },
+                { name: '木盾', type: '武器', rarity: 3, image: '' },
+                { name: '能量块', type: '武器', rarity: 3, image: '' }
+            ]
+        };
+
+        // ================= 抽卡逻辑 =================
+        const PITY_HARD = 70;            // 硬保底抽数
+        let pityCount = 0;               // 距离上次5星的抽数
+        const BASE_5_STAR = 0.008;       // 0.8%
+        const BASE_4_STAR = 0.085;       // 8.5%
+
+        // 读取本地存储的抽卡计数和保底
+        if (localStorage.getItem('pityCount')) {
+            pityCount = parseInt(localStorage.getItem('pityCount'));
+        }
+        document.getElementById('pity-counter').textContent = pityCount;
+        document.getElementById('guarantee-left').textContent = PITY_HARD - pityCount;
+
+        function savePity() {
+            localStorage.setItem('pityCount', pityCount);
+            document.getElementById('pity-counter').textContent = pityCount;
+            document.getElementById('guarantee-left').textContent = PITY_HARD - pityCount;
+        }
+
+        function getRandomItem(rarity) {
+            if (rarity === 5) {
+                return pool.fiveStar[Math.floor(Math.random() * pool.fiveStar.length)];
+            } else if (rarity === 4) {
+                return pool.fourStar[Math.floor(Math.random() * pool.fourStar.length)];
+            } else {
+                return pool.threeStar[Math.floor(Math.random() * pool.threeStar.length)];
+            }
+        }
+
+        function performPull() {
+            let rarity;
+            pityCount++;
+            if (pityCount >= PITY_HARD) {
+                rarity = 5; // 硬保底
+                pityCount = 0;
+            } else {
+                const rand = Math.random();
+                if (rand < BASE_5_STAR) {
+                    rarity = 5;
+                    pityCount = 0;
+                } else if (rand < BASE_5_STAR + BASE_4_STAR) {
+                    rarity = 4;
+                } else {
+                    rarity = 3;
+                }
+            }
+            savePity();
+            return getRandomItem(rarity);
+        }
+
+        // ================= UI 渲染 =================
+        const resultArea = document.getElementById('result-area');
+
+        function renderResult(items) {
+            resultArea.innerHTML = '';
+            items.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = `gacha-card min-w-[120px] bg-gray-800 rounded-xl p-3 text-center border-2 rarity-${item.rarity} flex-shrink-0`;
+                card.style.animationDelay = `${index * 0.1}s`;
+                if (item.image) {
+                    card.innerHTML += `<img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-cover rounded-full mx-auto mb-2" onerror="this.onerror=null; this.src='../wuwa/assets/placeholder.jpg';">`;
+                } else {
+                    card.innerHTML += `<div class="w-20 h-20 mx-auto mb-2 rounded-full bg-gray-700 flex items-center justify-center"><i class="fa-solid fa-question text-3xl"></i></div>`;
+                }
+                card.innerHTML += `
+                    <p class="font-bold text-sm">${item.name}</p>
+                    <p class="text-xs text-gray-400">${item.rarity}★ ${item.element || item.type || ''}</p>
+                `;
+                resultArea.appendChild(card);
+            });
+
+            // 滚动到最新结果
+            resultArea.scrollLeft = resultArea.scrollWidth;
+        }
+
+        // ================= 历史记录 =================
+        const historyList = document.getElementById('history-list');
+        let history = JSON.parse(localStorage.getItem('gachaHistory') || '[]');
+
+        function updateHistoryDisplay() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<p class="text-gray-500 text-center">暂无记录</p>';
+                return;
+            }
+            historyList.innerHTML = history.reverse().slice(0, 20).map(entry => {
+                const color = entry.rarity === 5 ? 'text-yellow-400' : entry.rarity === 4 ? 'text-purple-400' : 'text-gray-400';
+                return `<div class="flex justify-between text-sm"><span class="${color}">${entry.name} (${entry.rarity}★)</span><span class="text-gray-500">${entry.time}</span></div>`;
+            }).join('');
+        }
+
+        function addHistory(items) {
+            const now = new Date().toLocaleTimeString();
+            items.forEach(item => {
+                history.push({
+                    name: item.name,
+                    rarity: item.rarity,
+                    time: now
+                });
+            });
+            localStorage.setItem('gachaHistory', JSON.stringify(history));
+            updateHistoryDisplay();
+        }
+
+        // ================= 事件绑定 =================
+        document.getElementById('single-pull').addEventListener('click', () => {
+            const result = [performPull()];
+            renderResult(result);
+            addHistory(result);
+        });
+
+        document.getElementById('multi-pull').addEventListener('click', () => {
+            const results = [];
+            for (let i = 0; i < 10; i++) {
+                results.push(performPull());
+            }
+            renderResult(results);
+            addHistory(results);
+        });
+
+        document.getElementById('clear-history').addEventListener('click', () => {
+            if (confirm('确定清空所有抽卡历史吗？')) {
+                history = [];
+                localStorage.removeItem('gachaHistory');
+                updateHistoryDisplay();
+            }
+        });
+
+        // 初始化显示历史
+        updateHistoryDisplay();
+    </script>
+</body>
+</html>
