@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "name": "熔岩之壳",
+    "type": "攻击",
+    "rarity": 4,
+    "set": "熔火之誓",
+    "effect": "2件套：火属性伤害+15%；4件套：击败敌人后攻击力+20%，持续10秒。",
+    "description": "寄宿着熔岩巨兽残余意志的甲壳，高温不散。",
+    "skill": "向前方喷射炽热岩浆，造成范围火伤并降低敌人防御。",
+    "source": "击败BOSS-熔岩巨兽",
+    "image": "../assets/echoes/molten_shell.jpg"
+  },
+  {
+    "id": 2,
+    "name": "冰霜结晶",
+    "type": "辅助",
+    "rarity": 5,
+    "set": "冰霜之心",
+    "effect": "2件套：冰属性伤害+15%；4件套：施放共鸣解放时生成护盾。",
+    "description": "万年冰晶中凝聚的纯净能量，寒气逼人。",
+    "skill": "释放冰霜冲击，冻结周围敌人并恢复自身生命。",
+    "source": "采集（冰封山脉）",
+    "image": ""
+  },
+  {
+    "id": 3,
+    "name": "雷霆之羽",
+    "type": "攻击",
+    "rarity": 3,
+    "set": "雷霆之怒",
+    "effect": "2件套：雷属性伤害+10%；4件套：暴击率+8%。",
+    "description": "雷鸟掉落的羽毛，仍闪烁着电光。",
+    "skill": "召唤雷电打击单个敌人。",
+    "source": "击败精英怪-雷鸟",
+    "image": "../assets/echoes/thunder_feather.jpg"
+  }
+]
