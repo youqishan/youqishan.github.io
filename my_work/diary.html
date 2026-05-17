@@ -2,17 +2,18 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>日记查看</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .markdown-body {
             padding: 1rem;
             background: white;
             border-radius: 0.75rem;
             line-height: 1.7;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         .markdown-body h1 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0.8rem; }
         .markdown-body h2 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.6rem; }
@@ -24,6 +25,7 @@
             padding: 0.2em 0.4em;
             border-radius: 0.25rem;
             font-size: 0.9em;
+            word-break: break-all;
         }
         .markdown-body pre {
             background: #1f2937;
@@ -38,6 +40,10 @@
             padding-left: 1rem;
             color: #4b5563;
             margin-bottom: 1rem;
+        }
+        .markdown-body a {
+            color: #3498db;
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -59,6 +65,66 @@
     </div>
 
     <script>
+        // --- 简易 Markdown 解析器 (不再依赖 marked.js) ---
+        function simpleMarkdownParser(md) {
+            if (!md) return '';
+
+            let html = md;
+
+            // 转义 HTML 特殊字符，防止 XSS
+            html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            // 标题 (### 和 ## 和 #)
+            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+            // 粗体和斜体
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+            // 行内代码
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // 链接
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+            // 无序列表 (简单情况，以 - 或 * 开头)
+            html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>(\n|$))+/g, '<ul>$&</ul>');
+
+            // 段落 (将连续的非空行包裹在 <p> 标签中)
+            const lines = html.split('\n');
+            let inParagraph = false;
+            let result = [];
+            let buffer = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                // 跳过已有的 HTML 块级标签行
+                if (/^\s*<(h[1-6]|ul|ol|li|pre|blockquote)/.test(line) || /^\s*<\/(ul|ol)>/.test(line)) {
+                    if (buffer.length > 0) {
+                        result.push('<p>' + buffer.join(' ') + '</p>');
+                        buffer = [];
+                    }
+                    result.push(line);
+                } else if (line.trim() === '') {
+                    if (buffer.length > 0) {
+                        result.push('<p>' + buffer.join(' ') + '</p>');
+                        buffer = [];
+                    }
+                } else {
+                    buffer.push(line);
+                }
+            }
+            if (buffer.length > 0) {
+                result.push('<p>' + buffer.join(' ') + '</p>');
+            }
+            html = result.join('\n');
+
+            return html;
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const dateStr = urlParams.get('date');
         const contentDiv = document.getElementById('diaryContent');
@@ -79,15 +145,32 @@
             dateEl.textContent = `${year}年${month}月${day}日`;
 
             try {
-                const response = await fetch(rawUrl);
-                if (response.ok) {
-                    const markdown = await response.text();
-                    contentDiv.innerHTML = marked.parse(markdown);
-                } else {
-                    contentDiv.innerHTML = '<p class="text-gray-400 italic">暂无日记</p>';
+                // 添加 no-cors 模式尝试绕过预检请求
+                let response = await fetch(rawUrl, { mode: 'cors' });
+                if (!response.ok) {
+                    // 如果 cors 模式失败，尝试 no-cors (可能无法读取内容)
+                    response = await fetch(rawUrl, { mode: 'no-cors' });
+                    if (response.type === 'opaque') {
+                        throw new Error('无法读取跨域资源');
+                    }
                 }
+                const markdown = await response.text();
+                contentDiv.innerHTML = simpleMarkdownParser(markdown);
             } catch (e) {
-                contentDiv.innerHTML = '<p class="text-red-500">加载失败，请检查网络</p>';
+                console.error('日记加载失败:', e);
+                // 最终尝试：使用一个 CORS 代理服务 (仅用于演示，生产环境不建议)
+                try {
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`;
+                    const proxyResponse = await fetch(proxyUrl);
+                    if (proxyResponse.ok) {
+                        const markdown = await proxyResponse.text();
+                        contentDiv.innerHTML = simpleMarkdownParser(markdown);
+                        return;
+                    }
+                } catch (proxyError) {
+                    console.error('通过代理加载也失败:', proxyError);
+                }
+                contentDiv.innerHTML = `<p class="text-red-500">日记加载失败: ${e.message}。请尝试使用电脑端访问。</p>`;
             }
         }
 
