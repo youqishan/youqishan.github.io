@@ -1,0 +1,16 @@
+fetch('data.json')
+  .then(res => res.json())
+  .then(characters => {
+    const container = document.getElementById('character-grid');
+    characters.forEach(char => {
+      const card = document.createElement('div');
+      card.className = 'bg-white rounded-xl shadow p-4 card-hover';
+      card.innerHTML = `
+        <img src="${char.image}" alt="${char.name}" class="w-full h-48 object-cover rounded-lg">
+        <h3 class="text-lg font-bold mt-3">${char.name}</h3>
+        <p class="text-sm text-gray-500">${char.element} · ${char.weapon} · ${char.rarity}★</p>
+        <p class="text-gray-600 mt-2 text-sm">${char.description}</p>
+      `;
+      container.appendChild(card);
+    });
+  });
