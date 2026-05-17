@@ -1,16 +1,130 @@
-fetch('data.json')
-  .then(res => res.json())
-  .then(characters => {
-    const container = document.getElementById('character-grid');
-    characters.forEach(char => {
-      const card = document.createElement('div');
-      card.className = 'bg-white rounded-xl shadow p-4 card-hover';
-      card.innerHTML = `
-        <img src="${char.image}" alt="${char.name}" class="w-full h-48 object-cover rounded-lg">
-        <h3 class="text-lg font-bold mt-3">${char.name}</h3>
-        <p class="text-sm text-gray-500">${char.element} · ${char.weapon} · ${char.rarity}★</p>
-        <p class="text-gray-600 mt-2 text-sm">${char.description}</p>
-      `;
-      container.appendChild(card);
-    });
-  });
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色图鉴 | 鸣潮特辑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
+
+    <h1 class="text-4xl font-bold mt-8 mb-2">🌊 角色图鉴</h1>
+    <p class="text-gray-400 mb-8">Wuthering Waves · 共鸣者档案</p>
+
+    <!-- 筛选按钮区域 -->
+    <div class="flex flex-wrap gap-3 mb-8" id="filter-buttons">
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="all">全部</button>
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="光">光</button>
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="暗">暗</button>
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="雷">雷</button>
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="火">火</button>
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="冰">冰</button>
+        <button class="filter-btn px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600 transition" data-filter="风">风</button>
+    </div>
+
+    <!-- 角色卡片网格 -->
+    <div id="character-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full">
+        <!-- 卡片将由JavaScript动态生成 -->
+    </div>
+
+    <div class="mt-12 text-center">
+        <a href="/wuwa/" class="text-blue-400 hover:text-blue-300 transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i>返回鸣潮特辑
+        </a>
+        <span class="text-gray-600 mx-3">|</span>
+        <a href="/" class="text-blue-400 hover:text-blue-300 transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i>返回主页
+        </a>
+    </div>
+
+    <script>
+        // 获取角色数据
+        fetch('data.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(characters => {
+                const container = document.getElementById('character-grid');
+
+                // 定义一个函数来渲染角色卡片
+                function renderCharacters(filterElement = 'all') {
+                    container.innerHTML = ''; // 清空容器
+                    characters.forEach(char => {
+                        // 如果设置了筛选条件且不符合，则跳过
+                        if (filterElement !== 'all' && char.element !== filterElement) return;
+
+                        const card = document.createElement('div');
+                        card.className = 'bg-gray-800 rounded-xl shadow-lg card-hover overflow-hidden';
+
+                        // 为稀有度添加星星
+                        const stars = '★'.repeat(char.rarity);
+
+                        card.innerHTML = `
+                            <div class="relative">
+                                <img src="${char.image}" alt="${char.name}" 
+                                     class="w-full h-64 object-cover" 
+                                     onerror="this.onerror=null; this.src='../assets/placeholder.jpg';">
+                                <div class="absolute top-2 right-2 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-bold">
+                                    ${stars}
+                                </div>
+                            </div>
+                            <div class="p-5">
+                                <h3 class="text-2xl font-bold mb-2">${char.name}</h3>
+                                <div class="flex gap-2 mb-3">
+                                    <span class="bg-blue-600 px-3 py-1 rounded-full text-xs">${char.element}</span>
+                                    <span class="bg-purple-600 px-3 py-1 rounded-full text-xs">${char.weapon}</span>
+                                </div>
+                                <p class="text-gray-400 text-sm leading-relaxed">${char.description}</p>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                }
+
+                // 初始渲染
+                renderCharacters();
+
+                // 绑定筛选按钮事件
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        // 更新按钮高亮样式
+                        document.querySelectorAll('.filter-btn').forEach(b => {
+                            b.classList.remove('bg-blue-600', 'text-white');
+                            b.classList.add('bg-gray-700');
+                        });
+                        btn.classList.remove('bg-gray-700');
+                        btn.classList.add('bg-blue-600', 'text-white');
+
+                        // 根据筛选条件重新渲染
+                        renderCharacters(btn.dataset.filter);
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Error loading character data:', error);
+                const container = document.getElementById('character-grid');
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fa-solid fa-triangle-exclamation text-5xl text-yellow-500 mb-4"></i>
+                        <p class="text-xl text-gray-400">角色数据加载失败</p>
+                        <p class="text-sm text-gray-500 mt-2">请检查 data.json 文件是否存在</p>
+                        <p class="text-xs text-red-400 mt-1">错误详情：${error.message}</p>
+                    </div>
+                `;
+            });
+    </script>
+</body>
+</html>
