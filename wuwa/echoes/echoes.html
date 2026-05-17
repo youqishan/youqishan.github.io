@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>声骸图鉴 | 鸣潮特辑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
+
+    <h1 class="text-4xl font-bold mt-8 mb-2">💎 声骸图鉴</h1>
+    <p class="text-gray-400 mb-8">Wuthering Waves · 声骸收集</p>
+
+    <!-- 筛选与搜索 -->
+    <div class="flex flex-wrap gap-4 mb-8 items-center justify-center">
+        <!-- 稀有度筛选 -->
+        <div id="rarity-filter" class="flex gap-2">
+            <button class="filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm" data-rarity="all">全部</button>
+            <button class="filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm" data-rarity="5">5★</button>
+            <button class="filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm" data-rarity="4">4★</button>
+            <button class="filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm" data-rarity="3">3★</button>
+            <button class="filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm" data-rarity="2">2★</button>
+        </div>
+
+        <!-- 套装筛选（动态生成） -->
+        <div id="set-filter" class="flex gap-2">
+            <!-- 按钮由JS动态生成 -->
+        </div>
+
+        <!-- 搜索框 -->
+        <input type="text" id="search-input" placeholder="搜索声骸名称..." 
+               class="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 w-48 focus:outline-none focus:border-blue-500">
+    </div>
+
+    <!-- 声骸卡片网格 -->
+    <div id="echo-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full">
+        <!-- 动态生成 -->
+    </div>
+
+    <div class="mt-12 text-center">
+        <a href="/wuwa/" class="text-blue-400 hover:text-blue-300 transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i>返回鸣潮特辑
+        </a>
+    </div>
+
+    <script>
+        // ================= 数据加载与渲染 =================
+        let allEchoes = [];   // 存储原始数据
+        let activeRarity = 'all';
+        let activeSet = 'all';
+        let searchTerm = '';
+
+        // 加载声骸数据
+        fetch('data.json')
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                allEchoes = data;
+                generateSetFilters(data);
+                renderEchoes(data);
+            })
+            .catch(err => {
+                document.getElementById('echo-grid').innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fa-solid fa-triangle-exclamation text-5xl text-yellow-500 mb-4"></i>
+                        <p class="text-xl text-gray-400">声骸数据加载失败</p>
+                        <p class="text-sm text-gray-500 mt-2">请检查 data.json 文件是否存在</p>
+                    </div>`;
+                console.error(err);
+            });
+
+        // 生成套装筛选按钮
+        function generateSetFilters(echoes) {
+            const sets = [...new Set(echoes.map(e => e.set))].filter(Boolean);
+            const container = document.getElementById('set-filter');
+            container.innerHTML = `<button class="filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm" data-set="all">全部套装</button>`;
+            sets.forEach(set => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn px-3 py-1 rounded-full bg-gray-700 hover:bg-gray-600 transition text-sm';
+                btn.dataset.set = set;
+                btn.textContent = set;
+                container.appendChild(btn);
+            });
+
+            // 绑定事件
+            document.querySelectorAll('#set-filter .filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    activeSet = btn.dataset.set;
+                    updateActiveButtons('#set-filter .filter-btn', btn);
+                    applyFilters();
+                });
+            });
+        }
+
+        // 稀有度按钮事件
+        document.querySelectorAll('#rarity-filter .filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeRarity = btn.dataset.rarity;
+                updateActiveButtons('#rarity-filter .filter-btn', btn);
+                applyFilters();
+            });
+        });
+
+        // 搜索框事件
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchTerm = e.target.value.trim().toLowerCase();
+            applyFilters();
+        });
+
+        // 更新按钮高亮样式
+        function updateActiveButtons(selector, activeBtn) {
+            document.querySelectorAll(selector).forEach(b => {
+                b.classList.remove('bg-blue-600');
+                b.classList.add('bg-gray-700');
+            });
+            activeBtn.classList.remove('bg-gray-700');
+            activeBtn.classList.add('bg-blue-600');
+        }
+
+        // 筛选与搜索逻辑
+        function applyFilters() {
+            let filtered = allEchoes;
+
+            if (activeRarity !== 'all') {
+                filtered = filtered.filter(e => e.rarity === parseInt(activeRarity));
+            }
+            if (activeSet !== 'all') {
+                filtered = filtered.filter(e => e.set === activeSet);
+            }
+            if (searchTerm) {
+                filtered = filtered.filter(e => e.name.toLowerCase().includes(searchTerm));
+            }
+
+            renderEchoes(filtered);
+        }
+
+        // 渲染卡片
+        function renderEchoes(echoes) {
+            const grid = document.getElementById('echo-grid');
+            if (echoes.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center text-gray-500 py-12">没有找到匹配的声骸</p>';
+                return;
+            }
+
+            grid.innerHTML = echoes.map(echo => {
+                const stars = '★'.repeat(echo.rarity);
+                const imgHtml = echo.image
+                    ? `<img src="${echo.image}" alt="${echo.name}" class="w-24 h-24 object-cover rounded-full mx-auto border-4 border-gray-600" onerror="this.onerror=null; this.src='../assets/echoes/placeholder.jpg';">`
+                    : `<div class="w-24 h-24 rounded-full bg-gray-700 mx-auto flex items-center justify-center text-4xl"><i class="fa-solid fa-gem"></i></div>`;
+
+                return `
+                <div class="bg-gray-800 rounded-xl shadow-lg card-hover p-5 flex flex-col items-center text-center">
+                    ${imgHtml}
+                    <h3 class="text-xl font-bold mt-4 mb-1">${echo.name}</h3>
+                    <div class="flex gap-2 mb-2">
+                        <span class="bg-yellow-600 text-xs px-2 py-1 rounded-full">${stars}</span>
+                        <span class="bg-green-600 text-xs px-2 py-1 rounded-full">${echo.type}</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-2">${echo.effect || ''}</p>
+                    <p class="text-gray-500 text-xs leading-relaxed">${echo.description}</p>
+                    <div class="mt-3 w-full text-left text-xs space-y-1">
+                        <p><span class="text-purple-400 font-bold">主动技能：</span>${echo.skill || '无'}</p>
+                        <p><span class="text-blue-400 font-bold">获取：</span>${echo.source}</p>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
