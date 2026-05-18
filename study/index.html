@@ -56,8 +56,8 @@
 
         // 解析文件名，提取信息
         function parseFileName(filename) {
-            // 例如: L1.1_notes.md  或 P13.1_大肠杆菌基因编辑实验.md
-            const nameWithoutExt = filename.replace(/\.md$/i, '');
+            // 例如: L1.1_notes.md  或 P13.1_大肠杆菌基因编辑实验.txt
+            const nameWithoutExt = filename.replace(/\.(md|txt)$/i, '');
             const parts = nameWithoutExt.split('_');
             if (parts.length < 2) return { type: '?', week: '?', lesson: '?', title: nameWithoutExt };
 
@@ -84,8 +84,8 @@
                 const res = await fetch(apiUrl);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const files = await res.json();
-                // 筛选 .md 文件
-                const notes = files.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+                // 筛选 .md 和 .txt 文件
+                const notes = files.filter(f => f.type === 'file' && (f.name.endsWith('.md') || f.name.endsWith('.txt')));
                 return notes.map(file => ({
                     name: file.name,
                     path: file.path,
