@@ -73,88 +73,88 @@
     </div>
 
     <script>
-        // 检查 marked 是否加载成功
-        if (typeof marked === 'undefined') {
-            document.getElementById('note-content').innerHTML = '<p class="text-red-500">Markdown 解析库加载失败，请稍后重试。</p>';
-            throw new Error('marked.js not loaded');
-        }
-
-        // 将所有逻辑包裹在 async 函数中，避免全局 return 报错
-        (async function() {
-            const cache = new Map();
-            const contentDiv = document.getElementById('note-content');
-            const noteTitle = document.getElementById('note-title');
-            const noteMeta = document.getElementById('note-meta');
-
-            const params = new URLSearchParams(window.location.search);
-            const filePath = params.get('path');
-
-            if (!filePath) {
-                contentDiv.innerHTML = '<p class="text-red-500">缺少笔记路径</p>';
-                return;
+        // 用一个大的匿名函数包裹全部逻辑，彻底避免全局 return
+        (function() {
+            // 检查 marked 是否可用，不可用则显示错误并结束
+            if (typeof marked === 'undefined') {
+                document.getElementById('note-content').innerHTML = '<p class="text-red-500">Markdown 解析库加载失败，请稍后重试。</p>';
+                return; // 这个 return 在匿名函数内，是合法的
             }
 
-            // 从路径提取课程和文件名
-            const parts = filePath.split('/');
-            const course = parts[1] || '';
-            const fileName = parts[parts.length - 1];
-            noteTitle.textContent = decodeURIComponent(fileName.replace(/\.(md|txt)$/i, ''));
-            noteMeta.textContent = `课程：${course}`;
+            // 主逻辑使用 async IIFE
+            (async function() {
+                const cache = new Map();
+                const contentDiv = document.getElementById('note-content');
+                const noteTitle = document.getElementById('note-title');
+                const noteMeta = document.getElementById('note-meta');
 
-            const isPlainText = fileName.toLowerCase().endsWith('.txt');
+                const params = new URLSearchParams(window.location.search);
+                const filePath = params.get('path');
 
-            // 检查缓存
-            if (cache.has(filePath)) {
-                const cached = cache.get(filePath);
-                renderContent(cached);
-                return;
-            }
-
-            const sessionCache = sessionStorage.getItem(filePath);
-            if (sessionCache) {
-                cache.set(filePath, sessionCache);
-                renderContent(sessionCache);
-                return;
-            }
-
-            contentDiv.innerHTML = '<p class="text-gray-400">加载中...</p>';
-
-            const rawUrl = `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/${filePath}`;
-            const cdnUrl = `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/${filePath}`;
-
-            async function fetchWithFallback() {
-                try {
-                    const response = await fetch(cdnUrl);
-                    if (response.ok) return response;
-                } catch (e) {
-                    console.warn('CDN 加载失败，回退到原始源', e);
+                if (!filePath) {
+                    contentDiv.innerHTML = '<p class="text-red-500">缺少笔记路径</p>';
+                    return;
                 }
-                return await fetch(rawUrl);
-            }
 
-            function renderContent(text) {
-                if (isPlainText) {
-                    contentDiv.className = 'plain-text';
-                    contentDiv.textContent = text;  // 用 textContent 更安全
-                } else {
-                    contentDiv.className = 'markdown-body';
-                    contentDiv.innerHTML = marked.parse(text);
+                // 提取课程和文件名
+                const parts = filePath.split('/');
+                const course = parts[1] || '';
+                const fileName = parts[parts.length - 1];
+                noteTitle.textContent = decodeURIComponent(fileName.replace(/\.(md|txt)$/i, ''));
+                noteMeta.textContent = `课程：${course}`;
+
+                const isPlainText = fileName.toLowerCase().endsWith('.txt');
+
+                // 检查缓存
+                if (cache.has(filePath)) {
+                    renderContent(cache.get(filePath));
+                    return;
                 }
-            }
+                const sessionCached = sessionStorage.getItem(filePath);
+                if (sessionCached) {
+                    cache.set(filePath, sessionCached);
+                    renderContent(sessionCached);
+                    return;
+                }
 
-            try {
-                const response = await fetchWithFallback();
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const text = await response.text();
-                // 缓存数据
-                cache.set(filePath, text);
+                contentDiv.innerHTML = '<p class="text-gray-400">加载中...</p>';
+
+                // 构造 URL（优先 CDN，回退 Raw）
+                const rawUrl = `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/${filePath}`;
+                const cdnUrl = `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/${filePath}`;
+
+                async function fetchWithFallback() {
+                    try {
+                        const response = await fetch(cdnUrl);
+                        if (response.ok) return response;
+                    } catch (e) {
+                        console.warn('CDN 加载失败，回退到原始源', e);
+                    }
+                    return await fetch(rawUrl);
+                }
+
+                function renderContent(text) {
+                    if (isPlainText) {
+                        contentDiv.className = 'plain-text';
+                        contentDiv.textContent = text;
+                    } else {
+                        contentDiv.className = 'markdown-body';
+                        contentDiv.innerHTML = marked.parse(text);
+                    }
+                }
+
                 try {
-                    sessionStorage.setItem(filePath, text);
-                } catch (e) { /* 忽略 */ }
-                renderContent(text);
-            } catch (err) {
-                contentDiv.innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
-            }
+                    const response = await fetchWithFallback();
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const text = await response.text();
+                    // 缓存数据
+                    cache.set(filePath, text);
+                    try { sessionStorage.setItem(filePath, text); } catch (e) { /* 忽略 */ }
+                    renderContent(text);
+                } catch (err) {
+                    contentDiv.innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
+                }
+            })();
         })();
     </script>
 </body>
