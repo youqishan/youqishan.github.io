@@ -45,14 +45,13 @@
             color: #3498db;
             text-decoration: underline;
         }
-        /* 纯文本日记样式 */
         .plain-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
             padding: 1rem;
             background: white;
             border-radius: 0.75rem;
             line-height: 1.7;
-            white-space: pre-wrap;
-            word-wrap: break-word;
         }
     </style>
 </head>
@@ -63,7 +62,7 @@
         <p id="diaryDate" class="text-gray-500 mb-6"></p>
         
         <div id="diaryContent" class="markdown-body">
-            <!-- 内容将动态加载 -->
+            <!-- 内容由JS动态加载 -->
         </div>
 
         <div class="mt-8 text-center">
@@ -74,7 +73,7 @@
     </div>
 
     <script>
-        // 简易 Markdown 解析器（与之前相同）
+        // 简易 Markdown 解析器（仅用于 .md 文件）
         function simpleMarkdownParser(md) {
             if (!md) return '';
             let html = md;
@@ -91,35 +90,27 @@
             const lines = html.split('\n');
             let result = [];
             let buffer = [];
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
+            for (let line of lines) {
                 if (/^\s*<(h[1-6]|ul|ol|li|pre|blockquote)/.test(line) || /^\s*<\/(ul|ol)>/.test(line)) {
-                    if (buffer.length > 0) { result.push('<p>' + buffer.join(' ') + '</p>'); buffer = []; }
+                    if (buffer.length) { result.push('<p>' + buffer.join(' ') + '</p>'); buffer = []; }
                     result.push(line);
                 } else if (line.trim() === '') {
-                    if (buffer.length > 0) { result.push('<p>' + buffer.join(' ') + '</p>'); buffer = []; }
+                    if (buffer.length) { result.push('<p>' + buffer.join(' ') + '</p>'); buffer = []; }
                 } else {
                     buffer.push(line);
                 }
             }
-            if (buffer.length > 0) result.push('<p>' + buffer.join(' ') + '</p>');
+            if (buffer.length) result.push('<p>' + buffer.join(' ') + '</p>');
             return result.join('\n');
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const dateStr = urlParams.get('date');
-        const contentDiv = document.getElementById('diaryContent');
-        const dateEl = document.getElementById('diaryDate');
+        // 主逻辑包裹在函数中，避免全局 return
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const dateStr = urlParams.get('date');
+            const contentDiv = document.getElementById('diaryContent');
+            const dateEl = document.getElementById('diaryDate');
 
-        // 尝试加载的顺序：.txt 优先（CDN, Raw），然后 .md（CDN, Raw）
-        const filePaths = [
-            { url: `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/my_work/diary/${dateStr}.txt`, type: 'txt' },
-            { url: `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/my_work/diary/${dateStr}.txt`, type: 'txt' },
-            { url: `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/my_work/diary/${dateStr}.md`, type: 'md' },
-            { url: `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/my_work/diary/${dateStr}.md`, type: 'md' }
-        ];
-
-        async function loadDiary() {
             if (!dateStr || dateStr.length !== 8) {
                 contentDiv.innerHTML = '<p class="text-red-500">无效的日期</p>';
                 return;
@@ -130,34 +121,60 @@
             const day = dateStr.substring(6, 8);
             dateEl.textContent = `${year}年${month}月${day}日`;
 
-            // 依次尝试每个 URL
-            for (const { url, type } of filePaths) {
-                try {
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const text = await response.text();
-                        if (type === 'txt') {
-                            // 纯文本显示
-                            contentDiv.className = 'plain-text';
-                            contentDiv.textContent = text;
-                        } else {
-                            // Markdown 渲染
-                            contentDiv.className = 'markdown-body';
-                            contentDiv.innerHTML = simpleMarkdownParser(text);
-                        }
-                        return;
-                    }
-                } catch (e) {
-                    // 继续尝试下一个
-                }
+            // 加载顺序：.txt 优先（CDN -> Raw），.md 备用
+            const loadOrder = [
+                { url: `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/my_work/diary/${dateStr}.txt`, type: 'txt' },
+                { url: `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/my_work/diary/${dateStr}.txt`, type: 'txt' },
+                { url: `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/my_work/diary/${dateStr}.md`, type: 'md' },
+                { url: `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/my_work/diary/${dateStr}.md`, type: 'md' }
+            ];
+
+            // 缓存
+            const cache = new Map();
+            const cacheKey = `diary_${dateStr}`;
+
+            // 检查缓存（内存 -> sessionStorage）
+            if (cache.has(cacheKey)) {
+                renderContent(cache.get(cacheKey));
+                return;
+            }
+            const sessionCached = sessionStorage.getItem(cacheKey);
+            if (sessionCached) {
+                renderContent(sessionCached);
+                return;
             }
 
-            // 全部失败
-            contentDiv.className = 'markdown-body';
-            contentDiv.innerHTML = '<p class="text-gray-500 italic">暂无日记</p>';
-        }
+            contentDiv.innerHTML = '<p class="text-gray-400">加载中...</p>';
 
-        loadDiary();
+            // 依次尝试加载
+            (async function() {
+                for (const { url, type } of loadOrder) {
+                    try {
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            const text = await response.text();
+                            // 存入缓存
+                            cache.set(cacheKey, text);
+                            try { sessionStorage.setItem(cacheKey, text); } catch (e) {}
+                            // 根据类型渲染
+                            if (type === 'txt') {
+                                contentDiv.className = 'plain-text';
+                                contentDiv.textContent = text;
+                            } else {
+                                contentDiv.className = 'markdown-body';
+                                contentDiv.innerHTML = simpleMarkdownParser(text);
+                            }
+                            return;
+                        }
+                    } catch (e) {
+                        // 继续尝试下一个 URL
+                    }
+                }
+                // 全部失败
+                contentDiv.className = 'markdown-body';
+                contentDiv.innerHTML = '<p class="text-gray-500 italic">暂无日记</p>';
+            })();
+        })();
     </script>
 </body>
 </html>
