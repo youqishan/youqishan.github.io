@@ -6,7 +6,6 @@
     <title>笔记查看</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 引入 marked.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .markdown-body {
@@ -46,7 +45,6 @@
             color: #3498db;
             text-decoration: underline;
         }
-        /* 纯文本样式 */
         .plain-text {
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -64,7 +62,7 @@
         <div id="note-meta" class="text-gray-500 mb-6"></div>
         
         <div id="note-content" class="markdown-body">
-            <!-- 动态渲染内容 -->
+            <!-- 内容由JS加载 -->
         </div>
 
         <div class="mt-8 text-center">
@@ -75,34 +73,34 @@
     </div>
 
     <script>
-        // 如果 marked 库加载失败，显示错误
+        // 检查 marked 是否加载成功
         if (typeof marked === 'undefined') {
             document.getElementById('note-content').innerHTML = '<p class="text-red-500">Markdown 解析库加载失败，请稍后重试。</p>';
             throw new Error('marked.js not loaded');
         }
 
-        // 转义 HTML 特殊字符
-        function escapeHtml(text) {
-            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
+        // 将所有逻辑包裹在 async 函数中，避免全局 return 报错
+        (async function() {
+            const cache = new Map();
+            const contentDiv = document.getElementById('note-content');
+            const noteTitle = document.getElementById('note-title');
+            const noteMeta = document.getElementById('note-meta');
 
-        // 全局缓存 Map
-        const cache = new Map();
+            const params = new URLSearchParams(window.location.search);
+            const filePath = params.get('path');
 
-        const params = new URLSearchParams(window.location.search);
-        const filePath = params.get('path');
-        if (!filePath) {
-            document.getElementById('note-content').innerHTML = '<p class="text-red-500">缺少笔记路径</p>';
-        } else {
+            if (!filePath) {
+                contentDiv.innerHTML = '<p class="text-red-500">缺少笔记路径</p>';
+                return;
+            }
+
             // 从路径提取课程和文件名
             const parts = filePath.split('/');
             const course = parts[1] || '';
             const fileName = parts[parts.length - 1];
-            // 去除 .md 或 .txt 后缀用于显示标题
-            document.getElementById('note-title').textContent = decodeURIComponent(fileName.replace(/\.(md|txt)$/i, ''));
-            document.getElementById('note-meta').textContent = `课程：${course}`;
+            noteTitle.textContent = decodeURIComponent(fileName.replace(/\.(md|txt)$/i, ''));
+            noteMeta.textContent = `课程：${course}`;
 
-            // 判断是否为纯文本
             const isPlainText = fileName.toLowerCase().endsWith('.txt');
 
             // 检查缓存
@@ -112,7 +110,6 @@
                 return;
             }
 
-            // 尝试从 sessionStorage 读取缓存
             const sessionCache = sessionStorage.getItem(filePath);
             if (sessionCache) {
                 cache.set(filePath, sessionCache);
@@ -120,57 +117,45 @@
                 return;
             }
 
-            // 显示加载状态
-            document.getElementById('note-content').innerHTML = '<p class="text-gray-400">加载中...</p>';
+            contentDiv.innerHTML = '<p class="text-gray-400">加载中...</p>';
 
-            // 构造原始 URL 和 CDN URL ( jsdelivr CDN )
             const rawUrl = `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/${filePath}`;
             const cdnUrl = `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/${filePath}`;
 
-            // 使用 Promise.any 或者优先尝试 CDN，失败再尝试 raw
             async function fetchWithFallback() {
                 try {
-                    // 优先使用 CDN
                     const response = await fetch(cdnUrl);
                     if (response.ok) return response;
                 } catch (e) {
                     console.warn('CDN 加载失败，回退到原始源', e);
                 }
-                // 回退到原始源
                 return await fetch(rawUrl);
             }
 
-            // 渲染内容的函数
             function renderContent(text) {
-                const contentDiv = document.getElementById('note-content');
                 if (isPlainText) {
                     contentDiv.className = 'plain-text';
-                    contentDiv.innerHTML = escapeHtml(text);
+                    contentDiv.textContent = text;  // 用 textContent 更安全
                 } else {
                     contentDiv.className = 'markdown-body';
                     contentDiv.innerHTML = marked.parse(text);
                 }
             }
 
-            fetchWithFallback()
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return response.text();
-                })
-                .then(text => {
-                    // 缓存数据
-                    cache.set(filePath, text);
-                    try {
-                        sessionStorage.setItem(filePath, text);
-                    } catch (e) {
-                        // sessionStorage 可能已满
-                    }
-                    renderContent(text);
-                })
-                .catch(err => {
-                    document.getElementById('note-content').innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
-                });
-        }
+            try {
+                const response = await fetchWithFallback();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const text = await response.text();
+                // 缓存数据
+                cache.set(filePath, text);
+                try {
+                    sessionStorage.setItem(filePath, text);
+                } catch (e) { /* 忽略 */ }
+                renderContent(text);
+            } catch (err) {
+                contentDiv.innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
+            }
+        })();
     </script>
 </body>
 </html>
