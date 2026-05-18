@@ -110,7 +110,7 @@
                 if (!searchTerm) return true;
                 const term = searchTerm.toLowerCase();
                 const displayName = `${note.parsed.type} Week ${note.parsed.week}.${note.parsed.lesson} - ${note.parsed.title}`;
-                return displayName.toLowerCase().includes(term) || note.name.toLowerCase().includes(term);
+                return;
             });
 
             if (filtered.length === 0) {
