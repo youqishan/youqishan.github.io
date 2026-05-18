@@ -6,7 +6,7 @@
     <title>笔记查看</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 引入 marked.js CDN (使用备用链接提升稳定性) -->
+    <!-- 引入 marked.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .markdown-body {
@@ -46,6 +46,15 @@
             color: #3498db;
             text-decoration: underline;
         }
+        /* 纯文本样式 */
+        .plain-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            line-height: 1.7;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center justify-center p-6">
@@ -66,10 +75,15 @@
     </div>
 
     <script>
-        // 如果 marked 库加载失败，启用备用方案
+        // 如果 marked 库加载失败，显示错误
         if (typeof marked === 'undefined') {
             document.getElementById('note-content').innerHTML = '<p class="text-red-500">Markdown 解析库加载失败，请稍后重试。</p>';
             throw new Error('marked.js not loaded');
+        }
+
+        // 转义 HTML 特殊字符
+        function escapeHtml(text) {
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
         // 全局缓存 Map
@@ -84,13 +98,17 @@
             const parts = filePath.split('/');
             const course = parts[1] || '';
             const fileName = parts[parts.length - 1];
-            document.getElementById('note-title').textContent = decodeURIComponent(fileName.replace(/\.md$/i, ''));
+            // 去除 .md 或 .txt 后缀用于显示标题
+            document.getElementById('note-title').textContent = decodeURIComponent(fileName.replace(/\.(md|txt)$/i, ''));
             document.getElementById('note-meta').textContent = `课程：${course}`;
+
+            // 判断是否为纯文本
+            const isPlainText = fileName.toLowerCase().endsWith('.txt');
 
             // 检查缓存
             if (cache.has(filePath)) {
                 const cached = cache.get(filePath);
-                document.getElementById('note-content').innerHTML = marked.parse(cached);
+                renderContent(cached);
                 return;
             }
 
@@ -98,7 +116,7 @@
             const sessionCache = sessionStorage.getItem(filePath);
             if (sessionCache) {
                 cache.set(filePath, sessionCache);
-                document.getElementById('note-content').innerHTML = marked.parse(sessionCache);
+                renderContent(sessionCache);
                 return;
             }
 
@@ -122,20 +140,32 @@
                 return await fetch(rawUrl);
             }
 
+            // 渲染内容的函数
+            function renderContent(text) {
+                const contentDiv = document.getElementById('note-content');
+                if (isPlainText) {
+                    contentDiv.className = 'plain-text';
+                    contentDiv.innerHTML = escapeHtml(text);
+                } else {
+                    contentDiv.className = 'markdown-body';
+                    contentDiv.innerHTML = marked.parse(text);
+                }
+            }
+
             fetchWithFallback()
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.text();
                 })
-                .then(md => {
+                .then(text => {
                     // 缓存数据
-                    cache.set(filePath, md);
+                    cache.set(filePath, text);
                     try {
-                        sessionStorage.setItem(filePath, md);
+                        sessionStorage.setItem(filePath, text);
                     } catch (e) {
                         // sessionStorage 可能已满
                     }
-                    document.getElementById('note-content').innerHTML = marked.parse(md);
+                    renderContent(text);
                 })
                 .catch(err => {
                     document.getElementById('note-content').innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
