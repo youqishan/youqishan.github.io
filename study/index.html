@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程笔记 | Study</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .note-item:hover { background-color: #f9fafb; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+    <div class="container mx-auto max-w-3xl py-12 px-4">
+        <!-- 顶部导航 -->
+        <div class="flex items-center justify-between mb-8">
+            <a href="/" class="text-secondary hover:underline"><i class="fa-solid fa-arrow-left mr-1"></i>返回主页</a>
+            <h1 id="course-title" class="text-3xl font-bold text-primary">课程笔记</h1>
+            <div></div> <!-- 占位保持居中 -->
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="mb-6">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="search-input" placeholder="搜索笔记标题或关键词..."
+                       class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+            </div>
+        </div>
+
+        <!-- 笔记列表 -->
+        <div id="notes-list" class="space-y-3">
+            <p class="text-center text-gray-500">加载中...</p>
+        </div>
+
+        <!-- 底部链接 -->
+        <div class="mt-8 text-center text-sm text-gray-500">
+            <a href="/study/?course=IBI1" class="mx-2 hover:text-secondary">IBI1</a> |
+            <a href="/study/?course=IBMS1" class="mx-2 hover:text-secondary">IBMS1</a> |
+            <a href="/study/?course=ICMB1" class="mx-2 hover:text-secondary">ICMB1</a>
+        </div>
+    </div>
+
+    <script>
+        // 从 URL 获取课程参数
+        const params = new URLSearchParams(window.location.search);
+        const course = params.get('course') || 'IBI1'; // 默认 IBI1
+
+        document.getElementById('course-title').textContent = `${course} 笔记`;
+
+        const REPO_OWNER = 'youqishan';
+        const REPO_NAME = 'youqishan.github.io';
+        const BRANCH = 'master'; // 你的分支名
+        const BASE_PATH = `study/${course}`;
+
+        // 解析文件名，提取信息
+        function parseFileName(filename) {
+            // 例如: L1.1_notes.md  或 P13.1_大肠杆菌基因编辑实验.md
+            const nameWithoutExt = filename.replace(/\.md$/i, '');
+            const parts = nameWithoutExt.split('_');
+            if (parts.length < 2) return { type: '?', week: '?', lesson: '?', title: nameWithoutExt };
+
+            const typeCode = parts[0]; // L1.1 或 P13.1 或 T2.3
+            const title = parts.slice(1).join('_'); // 剩余部分作为标题
+
+            // 解析类型和数字
+            const match = typeCode.match(/^([LPT])(\d+)\.(\d+)$/i);
+            if (!match) return { type: '?', week: '?', lesson: '?', title: nameWithoutExt };
+
+            const typeMap = { 'L': 'Lecture', 'P': 'Practise', 'T': 'Tutorial' };
+            return {
+                type: typeMap[match[1].toUpperCase()] || match[1],
+                week: match[2],
+                lesson: match[3],
+                title: title || '未命名'
+            };
+        }
+
+        // 获取目录内容
+        async function fetchNotes() {
+            const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BASE_PATH}?ref=${BRANCH}`;
+            try {
+                const res = await fetch(apiUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const files = await res.json();
+                // 筛选 .md 文件
+                const notes = files.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+                return notes.map(file => ({
+                    name: file.name,
+                    path: file.path,
+                    download_url: file.download_url,
+                    parsed: parseFileName(file.name)
+                }));
+            } catch (err) {
+                console.error(err);
+                return [];
+            }
+        }
+
+        // 渲染列表
+        function renderNotes(notes, searchTerm = '') {
+            const container = document.getElementById('notes-list');
+            if (notes.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">暂无笔记</p>';
+                return;
+            }
+
+            const filtered = notes.filter(note => {
+                if (!searchTerm) return true;
+                const term = searchTerm.toLowerCase();
+                const displayName = `${note.parsed.type} Week ${note.parsed.week}.${note.parsed.lesson} - ${note.parsed.title}`;
+                return displayName.toLowerCase().includes(term) || note.name.toLowerCase().includes(term);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">没有匹配的笔记</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(note => {
+                const displayName = `${note.parsed.type} Week ${note.parsed.week}.${note.parsed.lesson} - ${note.parsed.title}`;
+                return `
+                <a href="viewer.html?path=${encodeURIComponent(note.path)}"
+                   class="note-item block bg-white p-4 rounded-lg shadow hover:shadow-md transition flex items-center justify-between">
+                    <div>
+                        <span class="text-lg font-medium">${displayName}</span>
+                        <span class="text-sm text-gray-500 ml-2">(${note.name})</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                </a>`;
+            }).join('');
+        }
+
+        // 搜索事件
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const allNotes = window.allNotes || [];
+            renderNotes(allNotes, e.target.value);
+        });
+
+        // 初始化
+        (async () => {
+            const notes = await fetchNotes();
+            window.allNotes = notes;
+            renderNotes(notes);
+        })();
+    </script>
+</body>
+</html>
