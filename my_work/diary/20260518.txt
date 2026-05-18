@@ -1,0 +1,5 @@
+这是对于.txt作为日记文件格式的测试
+This is a test using .txt as the diary file format
+
+我想要测试.txt的加载速度相较.md究竟如何
+I want to test how the loading speed of .txt files compares with that of .md files.
