@@ -6,6 +6,8 @@
     <title>笔记查看</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 marked.js CDN (使用备用链接提升稳定性) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .markdown-body {
             padding: 1rem;
@@ -53,7 +55,7 @@
         <div id="note-meta" class="text-gray-500 mb-6"></div>
         
         <div id="note-content" class="markdown-body">
-            加载中...
+            <!-- 动态渲染内容 -->
         </div>
 
         <div class="mt-8 text-center">
@@ -64,38 +66,14 @@
     </div>
 
     <script>
-        // 简易 Markdown 解析器
-        function simpleMarkdownParser(md) {
-            if (!md) return '';
-            let html = md;
-            html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-            // 简单列表处理（与之前相同）
-            html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
-            html = html.replace(/(<li>.*<\/li>(\n|$))+/g, '<ul>$&</ul>');
-            // 简单段落处理
-            const lines = html.split('\n');
-            let result = [];
-            let buffer = [];
-            for (let line of lines) {
-                if (/^\s*<(h[1-6]|ul|ol|li|pre|blockquote)/.test(line) || /^\s*<\/(ul|ol)>/.test(line)) {
-                    if (buffer.length) { result.push('<p>' + buffer.join(' ') + '</p>'); buffer = []; }
-                    result.push(line);
-                } else if (line.trim() === '') {
-                    if (buffer.length) { result.push('<p>' + buffer.join(' ') + '</p>'); buffer = []; }
-                } else {
-                    buffer.push(line);
-                }
-            }
-            if (buffer.length) result.push('<p>' + buffer.join(' ') + '</p>');
-            return result.join('\n');
+        // 如果 marked 库加载失败，启用备用方案
+        if (typeof marked === 'undefined') {
+            document.getElementById('note-content').innerHTML = '<p class="text-red-500">Markdown 解析库加载失败，请稍后重试。</p>';
+            throw new Error('marked.js not loaded');
         }
+
+        // 全局缓存 Map
+        const cache = new Map();
 
         const params = new URLSearchParams(window.location.search);
         const filePath = params.get('path');
@@ -109,15 +87,55 @@
             document.getElementById('note-title').textContent = decodeURIComponent(fileName.replace(/\.md$/i, ''));
             document.getElementById('note-meta').textContent = `课程：${course}`;
 
-            // 构造 raw URL
+            // 检查缓存
+            if (cache.has(filePath)) {
+                const cached = cache.get(filePath);
+                document.getElementById('note-content').innerHTML = marked.parse(cached);
+                return;
+            }
+
+            // 尝试从 sessionStorage 读取缓存
+            const sessionCache = sessionStorage.getItem(filePath);
+            if (sessionCache) {
+                cache.set(filePath, sessionCache);
+                document.getElementById('note-content').innerHTML = marked.parse(sessionCache);
+                return;
+            }
+
+            // 显示加载状态
+            document.getElementById('note-content').innerHTML = '<p class="text-gray-400">加载中...</p>';
+
+            // 构造原始 URL 和 CDN URL ( jsdelivr CDN )
             const rawUrl = `https://raw.githubusercontent.com/youqishan/youqishan.github.io/master/${filePath}`;
-            fetch(rawUrl)
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return res.text();
+            const cdnUrl = `https://cdn.jsdelivr.net/gh/youqishan/youqishan.github.io@master/${filePath}`;
+
+            // 使用 Promise.any 或者优先尝试 CDN，失败再尝试 raw
+            async function fetchWithFallback() {
+                try {
+                    // 优先使用 CDN
+                    const response = await fetch(cdnUrl);
+                    if (response.ok) return response;
+                } catch (e) {
+                    console.warn('CDN 加载失败，回退到原始源', e);
+                }
+                // 回退到原始源
+                return await fetch(rawUrl);
+            }
+
+            fetchWithFallback()
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.text();
                 })
                 .then(md => {
-                    document.getElementById('note-content').innerHTML = simpleMarkdownParser(md);
+                    // 缓存数据
+                    cache.set(filePath, md);
+                    try {
+                        sessionStorage.setItem(filePath, md);
+                    } catch (e) {
+                        // sessionStorage 可能已满
+                    }
+                    document.getElementById('note-content').innerHTML = marked.parse(md);
                 })
                 .catch(err => {
                     document.getElementById('note-content').innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
