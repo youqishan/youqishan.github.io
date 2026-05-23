@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>团子快跑 | 鸣潮特辑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .character-card.selected {
+            border: 3px solid #facc15;
+            box-shadow: 0 0 12px #facc15;
+        }
+        .character-card.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4">
+
+    <!-- 标题 -->
+    <div class="text-center mt-4 mb-8">
+        <h1 class="text-4xl font-bold">🍡 团子快跑</h1>
+        <p class="text-gray-400 mt-2">选择 6 位团子，开启环形赛道大作战！</p>
+    </div>
+
+    <!-- 角色选择区 -->
+    <div id="selection-screen" class="max-w-5xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4 text-center">选择参战团子（已选 <span id="selected-count">0</span>/6）</h2>
+        <div id="character-grid" class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8"></div>
+        <div class="text-center">
+            <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-400 text-black px-10 py-3 rounded-full text-xl font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <i class="fa-solid fa-play mr-2"></i>开始比赛
+            </button>
+        </div>
+    </div>
+
+    <!-- 比赛画面 -->
+    <div id="race-screen" class="hidden max-w-6xl mx-auto">
+        <div class="text-center mb-4">
+            <span class="text-lg">第 <span id="round-num">1</span> 轮</span> &nbsp; | &nbsp;
+            <span class="text-gray-400">点击画布或等待自动推进</span>
+        </div>
+        <canvas id="race-canvas" width="1000" height="300" class="cursor-pointer"></canvas>
+        <div class="text-center mt-4 space-x-4">
+            <button id="next-round-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full transition">下一轮 ▶</button>
+            <button id="auto-btn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full transition">自动播放</button>
+            <button id="reset-btn" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded-full transition">重新开始</button>
+        </div>
+        <div id="event-log" class="mt-4 p-4 bg-gray-800 rounded-xl max-h-32 overflow-y-auto text-sm text-gray-300"></div>
+    </div>
+
+    <!-- 结果画面 -->
+    <div id="result-screen" class="hidden max-w-4xl mx-auto text-center">
+        <canvas id="result-canvas" width="1000" height="300" class="mx-auto"></canvas>
+        <div class="mt-4 text-lg font-bold" id="result-text"></div>
+        <button onclick="location.reload()" class="mt-6 bg-primary text-white px-8 py-2 rounded-full hover:bg-blue-700 transition">
+            <i class="fa-solid fa-rotate-right mr-2"></i>再来一局
+        </button>
+    </div>
+
+    <script>
+        // ==================== 角色数据 ====================
+        const allCharacters = [
+            { id: 'lu', name: '陆·赫斯团子', short: '陆', color: '#f87171' },
+            { id: 'xige', name: '西格莉卡团子', short: '西', color: '#c084fc' },
+            { id: 'dani', name: '达妮娅团子', short: '达', color: '#fb923c' },
+            { id: 'feixue', name: '绯雪团子', short: '绯', color: '#38bdf8' },
+            { id: 'kati', name: '卡提希娅团子', short: '卡', color: '#a78bfa' },
+            { id: 'feibi', name: '菲比团子', short: '菲', color: '#fbbf24' },
+            { id: 'qianzhi', name: '千咲团子', short: '千', color: '#34d399' },
+            { id: 'moning', name: '莫宁团子', short: '莫', color: '#f472b6' },
+            { id: 'linnai', name: '琳奈团子', short: '琳', color: '#818cf8' },
+            { id: 'aimi', name: '爱弥斯团子', short: '爱', color: '#facc15' },
+            { id: 'shouan', name: '守岸人团子', short: '守', color: '#4ade80' },
+            { id: 'kelai', name: '珂莱塔团子', short: '珂', color: '#fb7185' },
+            { id: 'aogu', name: '奥古斯塔团子', short: '奥', color: '#e2e8f0' },
+            { id: 'younuo', name: '尤诺团子', short: '尤', color: '#94a3b8' },
+            { id: 'fuluo', name: '弗洛洛团子', short: '弗', color: '#fdba74' },
+            { id: 'changli', name: '长离团子', short: '长', color: '#cbd5e1' },
+            { id: 'jinxi', name: '今汐团子', short: '今', color: '#67e8f9' },
+            { id: 'kaka', name: '卡卡罗团子', short: '卡卡', color: '#d8b4fe' }
+        ];
+
+        let selectedChars = [];
+        let raceState = null;
+        let autoTimer = null;
+
+        // ==================== 选择界面 ====================
+        function renderSelection() {
+            const grid = document.getElementById('character-grid');
+            grid.innerHTML = allCharacters.map(c => `
+                <div class="character-card bg-gray-800 rounded-xl p-3 text-center cursor-pointer transition hover:bg-gray-700"
+                     data-id="${c.id}" onclick="toggleChar('${c.id}')">
+                    <div class="text-3xl font-bold" style="color:${c.color}">${c.short}</div>
+                    <div class="text-xs mt-1 text-gray-300">${c.name}</div>
+                </div>
+            `).join('');
+        }
+
+        window.toggleChar = function(id) {
+            const char = allCharacters.find(c => c.id === id);
+            if (!char) return;
+            const index = selectedChars.findIndex(c => c.id === id);
+            if (index >= 0) {
+                selectedChars.splice(index, 1);
+                document.querySelector(`.character-card[data-id="${id}"]`).classList.remove('selected');
+            } else {
+                if (selectedChars.length >= 6) return;
+                selectedChars.push(char);
+                document.querySelector(`.character-card[data-id="${id}"]`).classList.add('selected');
+            }
+            document.getElementById('selected-count').textContent = selectedChars.length;
+            document.getElementById('start-btn').disabled = selectedChars.length !== 6;
+        };
+
+        // ==================== 比赛逻辑 ====================
+        const TILES = 32;           // 赛道格子数
+        const TRACK_LENGTH = TILES + 1; // 包括起点0
+        const SPECIAL_TILES = {
+            rift: [6, 20],
+            block: [10, 28],
+            boost: [3, 11, 16, 23]
+        };
+
+        class Character {
+            constructor(data) {
+                Object.assign(this, data);
+                this.position = 0;          // 格子位置 0 ~ 32
+                this.stackedAbove = [];     // 上方的团子（数组）
+                this.stackedBelow = null;   // 下方的团子（单个）
+                this.finished = false;
+                // 技能状态
+                this.lastDice = null;
+                this.metBu = false;
+                this.katiUsed = false;
+                this.aimiUsed = false;
+                this.younuoUsed = false;
+                this.moningCycle = 0;       // 莫宁循环: 0->3, 1->2, 2->1
+                this.skipNext = false;      // 爱弥斯/奥古斯塔等
+                this.nextRoundLast = false; // 奥古斯塔
+            }
+
+            get stackTop() {
+                return this.stackedAbove.length > 0 ? this.stackedAbove[this.stackedAbove.length - 1] : this;
+            }
+            get stackBottom() {
+                return this.stackedBelow ? this.stackedBelow.stackBottom : this;
+            }
+            get stackHeight() {
+                return 1 + (this.stackedBelow ? this.stackedBelow.stackHeight : 0);
+            }
+            get rank() {
+                // 排名：位置越远越高，堆叠中上方高于下方
+                let order = this.position * 1000 + (this.stackedAbove.length * 10);
+                return order;
+            }
+        }
+
+        function initRace() {
+            const chars = selectedChars.map(c => new Character(c));
+            const bu = new Character({ id: 'bu', name: '布大王团子', short: '布', color: '#9ca3af' });
+            bu.isBu = true;
+            bu.direction = -1; // 从终点向起点移动
+            bu.position = TILES;
+            bu.stackedAbove = [];
+            bu.stackedBelow = null;
+            return {
+                characters: chars,
+                bu: bu,
+                round: 1,
+                finished: false,
+                eventLog: [],
+                lastDiceResults: {}
+            };
+        }
+
+        // 技能处理函数（简化实现，重点展示核心逻辑）
+        function applySkills(state, char, dice, order, allDices) {
+            let steps = dice;
+            let extra = 0;
+            const allChars = [...state.characters, state.bu];
+
+            // 陆·赫斯团子：推进装置额外3格，阻遏额外后退1格（在移动后处理）
+            // 这里先不处理，在移动后判断特殊格子时应用。
+
+            // 西格莉卡团子：标记排名紧邻且更高的至多两个团子，被标记的少前进1格（至少1）
+            if (char.id === 'xige' && state.round > 1) {
+                const sorted = [...state.characters].sort((a,b) => b.rank - a.rank);
+                const idx = sorted.indexOf(char);
+                let targets = sorted.slice(0, idx).reverse().slice(0,2); // 排名更高的紧邻
+                targets.forEach(t => t.marked = true);
+            }
+            if (char.marked) {
+                steps = Math.max(1, steps - 1);
+                char.marked = false;
+            }
+
+            // 达妮娅团子：投出和上次相同点数，额外前进2格
+            if (char.id === 'dani' && char.lastDice !== null && dice === char.lastDice) {
+                extra += 2;
+            }
+            char.lastDice = dice;
+
+            // 绯雪团子：遇到布大王后，每次移动额外前进1格
+            if (char.id === 'feixue' && char.metBu) {
+                extra += 1;
+            }
+
+            // 卡提希娅团子：每场最多1次，移动结束后若最后一名，剩余回合60%概率额外前进2格
+            // 将在移动结束后处理
+
+            // 菲比团子：50%概率额外前进1格
+            if (char.id === 'feibi' && Math.random() < 0.5) {
+                extra += 1;
+            }
+
+            // 千咲团子：投出本轮最小点数之一，额外前进2格
+            if (char.id === 'qianzhi') {
+                const minDice = Math.min(...Object.values(allDices));
+                if (dice === minDice) extra += 2;
+            }
+
+            // 莫宁团子：点数固定循环3/2/1
+            if (char.id === 'moning') {
+                const cycle = [3,2,1];
+                steps = cycle[char.moningCycle % 3];
+                char.moningCycle++;
+                extra = 0; // 莫宁的骰子替换，不应用额外
+            }
+
+            // 琳奈团子：60%概率双倍点数，20%概率无法移动
+            if (char.id === 'linnai') {
+                const r = Math.random();
+                if (r < 0.6) steps *= 2;
+                else if (r < 0.8) steps = 0;
+            }
+
+            // 爱弥斯团子：每场一次，经过中点后，若前方有非布团子，传送到最近团子顶端
+            // 移动结束后处理
+
+            // 守岸人团子：骰子只会2或3
+            if (char.id === 'shouan') {
+                steps = Math.random() < 0.5 ? 2 : 3;
+            }
+
+            // 珂莱塔团子：28%概率双倍
+            if (char.id === 'kelai' && Math.random() < 0.28) {
+                steps *= 2;
+            }
+
+            // 奥古斯塔团子：回合开始时若在堆叠顶端，本回合不行动，下回合最后行动
+            if (char.id === 'aogu') {
+                if (char.stackedAbove.length === 0) {
+                    char.skipNext = true;
+                }
+                if (char.nextRoundLast) {
+                    // 最后行动
+                }
+            }
+
+            // 尤诺团子：每场一次，经过中点后，将前后其他非布团子传送至自己格子
+            // 移动结束后处理
+
+            // 弗洛洛团子：回合开始时若在堆叠最底层，移动时额外前进3格
+            if (char.id === 'fuluo' && char.stackedBelow === null && char.stackedAbove.length > 0) {
+                extra += 3;
+            }
+
+            // 长离团子：如果下方堆叠其他团子，下回合65%概率最后一个行动（暂不实现）
+            // 今汐团子：如果头顶堆叠其他团子，40%概率移动到最上方（将在移动时处理）
+            // 卡卡罗团子：开始移动时如果在最后一名，额外前进3格
+            if (char.id === 'kaka') {
+                const ranks = state.characters.map(c => c.position);
+                if (char.position === Math.min(...ranks)) {
+                    extra += 3;
+                }
+            }
+
+            return steps + extra;
+        }
+
+        function moveCharacter(state, char, steps) {
+            const dir = char.isBu ? -1 : 1;
+            let newPos = char.position + dir * steps;
+            // 赛道边界（0~32），布大王反向但也在赛道内
+            if (!char.isBu && newPos >= TILES) {
+                newPos = TILES;
+                char.finished = true;
+                state.finished = true; // 有非布团子到达终点
+            }
+            if (char.isBu) {
+                if (newPos <= 0) newPos = 0;
+                // 布大王到达起点？规则说明整轮结束后最后一名的角色超过他，他会回到终点。这里简化：如果被超过，重置位置。
+                // 将在回合结束时处理。
+            }
+            char.position = Math.min(TILES, Math.max(0, newPos));
+            // 处理特殊格子 (仅非布团子？布大王也要触发赛道机制)
+            if (SPECIAL_TILES.rift.includes(char.position)) {
+                // 时空裂隙：吞噬后随机堆叠顺序（打乱该团子及其上下堆叠）
+                const stack = [];
+                let bottom = char.stackBottom;
+                while (bottom) { stack.push(bottom); bottom = bottom.stackedAbove.length > 0 ? bottom.stackedAbove[0] : null; }
+                // 这里简化：随机打乱 stack 顺序，但保持堆叠关系
+                // 由于复杂，暂时仅记录事件
+                state.eventLog.push(`${char.short} 被时空裂隙吞噬！`);
+            }
+            if (SPECIAL_TILES.block.includes(char.position)) {
+                char.position = Math.max(0, char.position - 1);
+                state.eventLog.push(`${char.short} 触发阻遏装置，后退一格`);
+            }
+            if (SPECIAL_TILES.boost.includes(char.position)) {
+                char.position = Math.min(TILES, char.position + 1);
+                if (char.id === 'lu') char.position = Math.min(TILES, char.position + 2); // 陆额外3格？描述：触发推进装置额外前进3格
+                state.eventLog.push(`${char.short} 触发推进装置，前进！`);
+            }
+            // 更新堆叠：若终点格有其他团子，则叠加到其上方
+            // 此处简化堆叠逻辑，仅按位置重叠处理
+        }
+
+        // 核心：执行一轮
+        function executeRound(state) {
+            const allParticipants = [...state.characters.filter(c => !c.finished), state.bu];
+            // 布大王从第3回合开始行动
+            if (state.round < 3) {
+                allParticipants.splice(allParticipants.indexOf(state.bu), 1);
+            }
+            // 随机行动顺序
+            const order = allParticipants.sort(() => Math.random() - 0.5);
+            // 投骰子
+            const dices = {};
+            order.forEach(c => {
+                if (c.isBu) dices[c.id] = Math.floor(Math.random() * 6) + 1;
+                else dices[c.id] = Math.floor(Math.random() * 3) + 1;
+            });
+            // 西格莉卡标记
+            const xige = order.find(c => c.id === 'xige');
+            if (xige && state.round > 1) {
+                const sorted = [...state.characters].sort((a,b) => b.rank - a.rank);
+                const idx = sorted.indexOf(xige);
+                let targets = sorted.slice(0, idx).reverse().slice(0,2);
+                targets.forEach(t => t.marked = true);
+            }
+            // 依序行动
+            order.forEach(c => {
+                if (c.finished) return;
+                let steps = applySkills(state, c, dices[c.id], order, dices);
+                if (steps < 0) steps = 0;
+                state.eventLog.push(`${c.short} 掷出 ${dices[c.id]}，前进 ${steps} 格`);
+                moveCharacter(state, c, steps);
+                // 卡提希娅/爱弥斯等赛后技能可在后续处理
+            });
+            // 回合结束后处理布大王位置重置
+            if (state.round >= 3) {
+                const lastChar = state.characters.reduce((a,b) => a.position < b.position ? a : b);
+                if (lastChar.position > state.bu.position) {
+                    state.bu.position = TILES;
+                    state.eventLog.push('布大王被超越，返回终点！');
+                }
+            }
+            state.round++;
+        }
+
+        // ==================== Canvas 绘制 ====================
+        function drawTrack(state, canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cellWidth = (canvas.width - 100) / TRACK_LENGTH;
+            const yBase = 180;
+            // 绘制格子
+            for (let i = 0; i <= TILES; i++) {
+                const x = 50 + i * cellWidth;
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(x, yBase - 20, cellWidth - 2, 40);
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(i, x + cellWidth/2, yBase + 5);
+                // 特殊标记
+                if (SPECIAL_TILES.rift.includes(i)) {
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(x + cellWidth/2, yBase - 30, 8, 0, 2*Math.PI);
+                    ctx.fill();
+                }
+                if (SPECIAL_TILES.block.includes(i)) {
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillText('◀', x + cellWidth/2, yBase - 30);
+                }
+                if (SPECIAL_TILES.boost.includes(i)) {
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillText('▶', x + cellWidth/2, yBase - 30);
+                }
+            }
+            // 绘制团子
+            const allChars = [...state.characters, state.bu];
+            const positions = {};
+            allChars.forEach(c => {
+                if (!positions[c.position]) positions[c.position] = [];
+                positions[c.position].push(c);
+            });
+            for (let pos in positions) {
+                const stack = positions[pos];
+                // 排序：堆叠底部在上方绘制？我们按数组顺序，先画底部的
+                stack.sort((a,b) => a.stackHeight - b.stackHeight); // 底部先画
+                stack.forEach((c, idx) => {
+                    const x = 50 + pos * cellWidth + cellWidth/2;
+                    const y = yBase - 60 - idx * 22;
+                    ctx.fillStyle = c.color;
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(c.short, x, y);
+                });
+            }
+        }
+
+        function nextRound() {
+            if (!raceState || raceState.finished) return;
+            executeRound(raceState);
+            drawTrack(raceState, document.getElementById('race-canvas'));
+            document.getElementById('round-num').textContent = raceState.round;
+            if (raceState.finished) {
+                clearInterval(autoTimer);
+                showResult();
+            }
+        }
+
+        function showResult() {
+            document.getElementById('race-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            const canvas = document.getElementById('result-canvas');
+            drawTrack(raceState, canvas);
+            const ranking = [...raceState.characters].sort((a,b) => b.rank - a.rank).map((c,i) => `${i+1}. ${c.name}`).join(' | ');
+            document.getElementById('result-text').textContent = `最终排名：${ranking}`;
+        }
+
+        document.getElementById('next-round-btn').addEventListener('click', nextRound);
+        document.getElementById('auto-btn').addEventListener('click', () => {
+            if (autoTimer) {
+                clearInterval(autoTimer);
+                autoTimer = null;
+                document.getElementById('auto-btn').textContent = '自动播放';
+            } else {
+                document.getElementById('auto-btn').textContent = '停止';
+                autoTimer = setInterval(() => {
+                    if (!raceState || raceState.finished) {
+                        clearInterval(autoTimer);
+                        return;
+                    }
+                    nextRound();
+                }, 800);
+            }
+        });
+        document.getElementById('reset-btn').addEventListener('click', () => location.reload());
+        document.getElementById('start-btn').addEventListener('click', () => {
+            if (selectedChars.length !== 6) return;
+            raceState = initRace();
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('race-screen').classList.remove('hidden');
+            drawTrack(raceState, document.getElementById('race-canvas'));
+            document.getElementById('round-num').textContent = '1';
+        });
+
+        renderSelection();
+    </script>
+</body>
+</html>
