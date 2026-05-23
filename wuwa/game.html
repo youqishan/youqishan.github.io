@@ -188,8 +188,31 @@
                 currentDices: {},
                 currentIdx: 0,
                 eventLog: [],
-                skillTriggers: []  // 本轮技能触发记录
+                skillTriggers: []
             };
+        }
+
+        // 新增：第一轮初始设置（排列堆叠，不移动）
+        function setupFirstRound(state) {
+            const participants = [...state.characters]; // 仅六个团子
+            const order = participants.sort(() => Math.random() - 0.5);
+            const dices = {};
+            order.forEach(c => {
+                dices[c.id] = Math.floor(Math.random() * 3) + 1;
+            });
+            state.currentOrder = order;
+            state.currentDices = dices;
+            state.currentIdx = 0;
+            state.skillTriggers = [];
+            // 按行动顺序逆序排列堆叠：最后一个行动的团子在底部，第一个在顶部
+            const stack = [...order].reverse();
+            setTileStack(state, 0, stack);
+            // 显示信息
+            const info = order.map(c => `${c.short}(🎲${dices[c.id]})`).join(' → ');
+            state.eventLog.push(`--- 第 1 轮 ---`);
+            state.eventLog.push(`行动顺序：${info}`);
+            updateRoundInfo(state);
+            updateSkillTriggers(state);
         }
 
         function getTileStack(state, pos) {
@@ -264,7 +287,6 @@
                 placeStack(state, stack, newPos);
                 let extra = '';
                 if (char.id === 'lu') {
-                    // 陆·赫斯触发阻遏额外后退1格
                     const furtherPos = Math.max(0, newPos - 1);
                     placeStack(state, getTileStack(state, newPos), furtherPos);
                     extra = '，陆·赫斯团子额外后退1格';
@@ -275,7 +297,7 @@
             if (SPECIAL_TILES.boost.includes(pos)) {
                 const stack = getTileStack(state, pos);
                 let extra = 1;
-                if (char.id === 'lu') extra = 4; // 陆额外3+1
+                if (char.id === 'lu') extra = 4;
                 const newPos = Math.min(TILES, pos + extra);
                 placeStack(state, stack, newPos);
                 let msg = `🚀 推进装置推至${newPos}`;
@@ -333,7 +355,6 @@
             state.currentIdx = 0;
             state.skillTriggers = [];
 
-            // 西格莉卡标记
             const xige = order.find(c => c.id === 'xige');
             if (xige && state.round > 1) {
                 const sorted = [...state.characters].sort((a,b) => b.position*1000 - a.position*1000);
@@ -350,6 +371,7 @@
 
         function nextStep() {
             if (!raceState || raceState.finished) return;
+            // 第一轮已经由setupFirstRound生成，不会为空；后续回合为空时生成
             if (raceState.currentOrder.length === 0) {
                 startNewRound(raceState);
                 drawTrack(raceState, document.getElementById('race-canvas'));
@@ -386,7 +408,7 @@
             const origDice = dice;
             let skillMsg = '';
 
-            // 技能处理
+            // 技能处理（保持不变）
             if (char.id === 'moning') {
                 const cycle = [3,2,1];
                 steps = cycle[char.moningCycle % 3];
@@ -539,6 +561,7 @@
             document.getElementById('result-text').textContent = `最终排名：${ranking}`;
         }
 
+        // 按钮事件
         document.getElementById('next-step-btn').addEventListener('click', nextStep);
         document.getElementById('auto-btn').addEventListener('click', () => {
             if (autoTimer) {
@@ -561,13 +584,14 @@
         document.getElementById('start-btn').addEventListener('click', () => {
             if (selectedChars.length !== 6) return;
             raceState = initRace();
+            setupFirstRound(raceState);   // 关键：初始化堆叠与第一轮顺序
             document.getElementById('selection-screen').classList.add('hidden');
             document.getElementById('race-screen').classList.remove('hidden');
             showSelectedSkills();
             drawTrack(raceState, document.getElementById('race-canvas'));
             document.getElementById('round-num').textContent = '1';
             document.getElementById('action-hint').textContent = '点击「下一步」开始第一轮';
-            document.getElementById('round-order').textContent = '等待新回合';
+            // 信息面板已由 setupFirstRound 更新
             document.getElementById('skill-triggers').innerHTML = '暂无';
         });
 
