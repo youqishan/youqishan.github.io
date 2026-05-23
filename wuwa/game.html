@@ -49,7 +49,7 @@
         </div>
         <canvas id="race-canvas" width="1000" height="300" class="cursor-pointer"></canvas>
         <div class="text-center mt-4 space-x-4">
-            <button id="next-step-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full transition">下一轮 ▶</button>
+            <button id="next-step-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full transition">下一步 ▶</button>
             <button id="auto-btn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full transition">自动播放</button>
             <button id="reset-btn" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded-full transition">重新开始</button>
         </div>
@@ -131,23 +131,18 @@
         class Character {
             constructor(data) {
                 Object.assign(this, data);
-                this.position = 0;          // 0 ~ 32
-                this.stackedAbove = [];     // 上方的团子
+                this.position = 0;          // 0~32
+                this.stackedAbove = [];     // 上方的团子（单链）
                 this.stackedBelow = null;   // 下方的团子
                 this.finished = false;
                 // 技能状态
                 this.lastDice = null;
                 this.metBu = false;
-                this.katiUsed = false;
-                this.aimiUsed = false;
-                this.younuoUsed = false;
                 this.moningCycle = 0;
                 this.marked = false;
-                this.skipNext = false;
-                this.nextRoundLast = false;
             }
 
-            get stackTop() { return this.stackedAbove.length > 0 ? this.stackedAbove[this.stackedAbove.length-1] : this; }
+            get stackTop() { return this.stackedAbove.length > 0 ? this.stackedAbove[0] : this; }
             get stackBottom() { return this.stackedBelow ? this.stackedBelow.stackBottom : this; }
             get isBu() { return this.id === 'bu'; }
         }
@@ -168,54 +163,13 @@
             };
         }
 
-        // 从链表中移除团子及其上方所有团子，返回移除的数组（从底到顶）
-        function detachStack(char) {
-            const stack = [];
-            let current = char;
-            while (current) {
-                stack.push(current);
-                current = current.stackedAbove.length > 0 ? current.stackedAbove[0] : null;
-            }
-            // 断开与下方的连接
-            if (char.stackedBelow) {
-                char.stackedBelow.stackedAbove = [];
-            }
-            // 清空各团子的上下引用（稍后重建）
-            stack.forEach(c => {
-                c.stackedBelow = null;
-                c.stackedAbove = [];
-            });
-            return stack; // 底 -> 顶
-        }
-
-        // 将移动栈 stack (底->顶) 放置到目标位置，并按照规则合并
-        function placeStack(state, stack, targetPos) {
-            // 获取目标格子的现有堆叠
-            const existing = getTileStack(state, targetPos); // 底->顶
-
-            if (stack[0].isBu) {
-                // 布大王：插入到 existing 底部，然后自己成为最底部
-                const bu = stack[0];
-                const aboveBu = stack.slice(1); // 布大王上方的团子
-                // 布大王在最底，然后是 existing，然后是 aboveBu
-                const newStack = [bu, ...existing, ...aboveBu];
-                setTileStack(state, targetPos, newStack);
-            } else {
-                // 普通团子：放在现有堆叠的顶部
-                const newStack = [...existing, ...stack];
-                setTileStack(state, targetPos, newStack);
-            }
-        }
-
-        // 获取某个格子的堆叠（底->顶）
+        // 获取格子上的堆叠（底->顶）
         function getTileStack(state, pos) {
             const all = [...state.characters, state.bu];
-            const atPos = all.filter(c => c.position === pos);
+            const atPos = all.filter(c => c.position === pos && !c.finished);
             if (atPos.length === 0) return [];
-            // 找到最底部的团子
-            const bottoms = atPos.filter(c => c.stackedBelow === null);
-            if (bottoms.length === 0) return [];
-            const bottom = bottoms[0];
+            const bottom = atPos.find(c => c.stackedBelow === null);
+            if (!bottom) return [];
             const stack = [];
             let cur = bottom;
             while (cur) {
@@ -225,138 +179,125 @@
             return stack;
         }
 
-        // 设置某个格子的堆叠（底->顶数组），并更新团子位置
+        // 设置格子上的堆叠（底->顶）
         function setTileStack(state, pos, stack) {
-            // 先断开这些团子原有的位置关系（它们可能来自不同格子）
             stack.forEach(c => {
-                if (c.stackedBelow) c.stackedBelow.stackedAbove = [];
+                c.position = pos;
                 c.stackedBelow = null;
                 c.stackedAbove = [];
-                c.position = pos;
             });
-            // 重建链表
             for (let i = 0; i < stack.length; i++) {
-                const c = stack[i];
                 if (i > 0) {
-                    c.stackedBelow = stack[i-1];
-                    stack[i-1].st addAbove = [c]; // 注意：每个团子可能只有0或1个上方团子，我们简化成单个引用
+                    stack[i].stackedBelow = stack[i - 1];
+                    stack[i - 1].stackedAbove = [stack[i]];
                 }
-                // 由于我们之前的链表只支持一个上方团子，这里需要修改数据结构。
-                // 为了兼容，我们改为使用数组 storedAbove 可以多个，但原代码只支持单链。
-                // 我们重构数据结构：改为每个团子有 `above` 和 `below` 表示直接上方/下方。
-            }
-            // 鉴于复杂度，保持原有简化链表：规定堆叠中每个团子最多只有一个直接上方团子。
-            // 所以我们这里改为：重建时，stack[i].stackedBelow = stack[i-1] (i>0), stack[i-1].st addAbove = [stack[i]].
-            for (let i = 0; i < stack.length; i++) {
-                const c = stack[i];
-                c.stackedBelow = i > 0 ? stack[i-1] : null;
-                c.stackedAbove = i < stack.length-1 ? [stack[i+1]] : [];
             }
         }
 
-        // 特殊格子触发处理（移动终点）
+        // 将堆叠放置到目标位置
+        function placeStack(state, stack, targetPos) {
+            const existing = getTileStack(state, targetPos);
+            if (stack[0].isBu) {
+                // 布大王插入底部
+                const bu = stack[0];
+                const aboveBu = stack.slice(1);
+                const newStack = [bu, ...existing, ...aboveBu];
+                setTileStack(state, targetPos, newStack);
+            } else {
+                const newStack = [...existing, ...stack];
+                setTileStack(state, targetPos, newStack);
+            }
+        }
+
+        // 从格子移除堆叠
+        function detachStack(char) {
+            const stack = [];
+            let cur = char;
+            while (cur) {
+                stack.push(cur);
+                cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null;
+            }
+            if (char.stackedBelow) {
+                char.stackedBelow.stackedAbove = [];
+            }
+            stack.forEach(c => {
+                c.stackedBelow = null;
+                c.stackedAbove = [];
+            });
+            return stack;
+        }
+
+        // 触发特殊格子（移动终点）
         function applySpecialTile(state, char, pos) {
             if (SPECIAL_TILES.rift.includes(pos)) {
-                // 时空裂隙：打乱该格子上整个堆叠的顺序（随机重排）
                 const stack = getTileStack(state, pos);
                 if (stack.length > 1) {
-                    // 随机打乱，然后重新设置
                     const shuffled = stack.sort(() => Math.random() - 0.5);
                     setTileStack(state, pos, shuffled);
                     state.eventLog.push(`🌪️ 时空裂隙打乱了堆叠！`);
                 }
+                return pos;
             }
             if (SPECIAL_TILES.block.includes(pos)) {
-                // 阻遏装置：整个堆叠后退1格
                 const stack = getTileStack(state, pos);
                 const newPos = Math.max(0, pos - 1);
-                moveWholeStack(state, stack, newPos);
+                placeStack(state, stack, newPos);
                 state.eventLog.push(`⛔ 阻遏装置将堆叠推回 ${newPos} 格`);
-                return newPos; // 返回新位置
+                return newPos;
             }
             if (SPECIAL_TILES.boost.includes(pos)) {
-                // 推进装置：整个堆叠前进1格
                 const stack = getTileStack(state, pos);
-                let newPos = Math.min(TILES, pos + 1);
-                if (char.id === 'lu') newPos = Math.min(TILES, pos + 4); // 陆·赫斯额外前进3格（总共+4？技能描述触发推进额外3格，加上推进本身1格，共4格）
-                moveWholeStack(state, stack, newPos);
+                let extra = 1;
+                if (char.id === 'lu') extra = 4; // 陆额外3格+推进本身1格
+                const newPos = Math.min(TILES, pos + extra);
+                placeStack(state, stack, newPos);
                 state.eventLog.push(`🚀 推进装置将堆叠推至 ${newPos} 格`);
                 return newPos;
             }
             return pos;
         }
 
-        // 移动整个堆叠到新位置（不触发特殊格子）
-        function moveWholeStack(state, stack, newPos) {
-            // 移除原位置
-            const oldPos = stack[0].position;
-            // 将所有团子位置更新
-            stack.forEach(c => c.position = newPos);
-            // 合并到新位置
-            const existing = getTileStack(state, newPos);
-            const combined = [...existing, ...stack];
-            setTileStack(state, newPos, combined);
-        }
-
-        // 布大王的逐步移动
+        // 布大王移动（逐步）
         function moveBu(state, bu, steps) {
             let remaining = steps;
-            let currentPos = bu.position;
-            const direction = -1; // 向起点
-
             while (remaining > 0) {
-                const nextPos = currentPos + direction;
-                if (nextPos < 0) nextPos = 0;
-                // 移动到 nextPos
-                // 从原格子移除布大王及其上方堆叠
-                const buStack = detachStack(bu); // 底->顶，包含布大王
-                // 将堆叠放置到 nextPos（布大王规则：插入到底部）
+                const nextPos = bu.position - 1;
+                if (nextPos < 0) break;
+                const buStack = detachStack(bu);
                 placeStack(state, buStack, nextPos);
-                // 更新 bu 的位置
                 bu.position = nextPos;
-                currentPos = nextPos;
                 remaining--;
-
-                // 如果剩余步数为0，检查特殊格子触发
                 if (remaining === 0) {
                     const triggeredPos = applySpecialTile(state, bu, nextPos);
                     if (triggeredPos !== nextPos) {
-                        // 触发装置改变了位置，可能还有后续？根据例子，不再继续移动
+                        // 触发装置后停止
+                        break;
                     }
-                    break;
                 }
             }
-            // 更新 metBu 标志（绯雪团子）
+            // 标记绯雪团子遇到布大王
             state.characters.forEach(c => {
-                if (c.position === bu.position && c !== bu && !c.finished) {
-                    c.metBu = true;
-                }
+                if (c.position === bu.position && !c.finished) c.metBu = true;
             });
         }
 
         // 普通团子移动
         function moveNormal(state, char, steps) {
-            const direction = 1;
-            let newPos = char.position + direction * steps;
+            let newPos = char.position + steps;
             if (newPos >= TILES) {
                 newPos = TILES;
                 char.finished = true;
                 state.finished = true;
             }
             newPos = Math.min(TILES, Math.max(0, newPos));
-
-            // 移除 char 及其上方堆叠
             const charStack = detachStack(char);
-            // 放置到新位置
             placeStack(state, charStack, newPos);
-            // 触发特殊格子
             const triggeredPos = applySpecialTile(state, char, newPos);
             if (triggeredPos !== newPos) {
-                // 已经移动过，不需要再做
+                // 装置改变了位置
             }
         }
 
-        // 开始新的一轮：掷骰子，决定顺序
         function startNewRound(state) {
             const participants = [...state.characters.filter(c => !c.finished)];
             if (state.round >= 3) participants.push(state.bu);
@@ -372,7 +313,7 @@
             // 西格莉卡标记
             const xige = order.find(c => c.id === 'xige');
             if (xige && state.round > 1) {
-                const sorted = [...state.characters].sort((a,b) => b.position*1000 - a.position*1000); // 简化的排名
+                const sorted = [...state.characters].sort((a,b) => b.position*1000 - a.position*1000);
                 const idx = sorted.indexOf(xige);
                 let targets = sorted.slice(0, idx).reverse().slice(0,2);
                 targets.forEach(t => t.marked = true);
@@ -380,18 +321,16 @@
             state.eventLog.push(`--- 第 ${state.round} 轮开始，行动顺序：${order.map(c=>c.short).join(' → ')} ---`);
         }
 
-        // 执行下一个团子的行动
         function nextStep() {
             if (!raceState || raceState.finished) return;
             if (raceState.currentOrder.length === 0) {
                 startNewRound(raceState);
             }
             if (raceState.currentIdx >= raceState.currentOrder.length) {
-                // 本轮结束
                 raceState.round++;
                 raceState.currentOrder = [];
                 raceState.currentIdx = 0;
-                // 布大王被超越检查
+                // 布大王被超越重置
                 if (raceState.round >= 3) {
                     const lastPos = Math.min(...raceState.characters.filter(c=>!c.finished).map(c=>c.position));
                     if (lastPos > raceState.bu.position) {
@@ -409,7 +348,7 @@
             const dice = raceState.currentDices[char.id];
             let steps = dice;
 
-            // 技能处理（简化，仅展示部分）
+            // 技能处理（简化）
             if (char.id === 'moning') {
                 const cycle = [3,2,1];
                 steps = cycle[char.moningCycle % 3];
@@ -436,6 +375,10 @@
                 steps += 1;
             } else if (char.id === 'fuluo' && char.stackedBelow === null && char.stackedAbove.length > 0) {
                 steps += 3;
+            }
+            if (char.marked) {
+                steps = Math.max(1, steps - 1);
+                char.marked = false;
             }
             char.lastDice = dice;
 
@@ -464,29 +407,29 @@
         function drawTrack(state, canvas) {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const cellWidth = (canvas.width - 100) / (TILES+1);
+            const cellWidth = (canvas.width - 100) / (TILES + 1);
             const yBase = 180;
             for (let i = 0; i <= TILES; i++) {
                 const x = 50 + i * cellWidth;
                 ctx.fillStyle = '#1f2937';
-                ctx.fillRect(x, yBase-20, cellWidth-2, 40);
+                ctx.fillRect(x, yBase - 20, cellWidth - 2, 40);
                 ctx.fillStyle = '#6b7280';
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(i, x+cellWidth/2, yBase+5);
+                ctx.fillText(i, x + cellWidth / 2, yBase + 5);
                 if (SPECIAL_TILES.rift.includes(i)) {
                     ctx.fillStyle = '#ef4444';
                     ctx.beginPath();
-                    ctx.arc(x+cellWidth/2, yBase-30, 8, 0, 2*Math.PI);
+                    ctx.arc(x + cellWidth / 2, yBase - 30, 8, 0, 2 * Math.PI);
                     ctx.fill();
                 }
                 if (SPECIAL_TILES.block.includes(i)) {
                     ctx.fillStyle = '#f59e0b';
-                    ctx.fillText('◀', x+cellWidth/2, yBase-30);
+                    ctx.fillText('◀', x + cellWidth / 2, yBase - 30);
                 }
                 if (SPECIAL_TILES.boost.includes(i)) {
                     ctx.fillStyle = '#10b981';
-                    ctx.fillText('▶', x+cellWidth/2, yBase-30);
+                    ctx.fillText('▶', x + cellWidth / 2, yBase - 30);
                 }
             }
             const allChars = [...state.characters, state.bu];
@@ -497,13 +440,14 @@
             });
             for (let pos in positions) {
                 let stack = positions[pos];
-                stack.sort((a,b) => {
-                    const aHeight = a.stackBottom === a ? 1 : 2; // 简单
-                    const bHeight = b.stackBottom === b ? 1 : 2;
-                    return aHeight - bHeight;
+                // 排序：越下方的越早绘制
+                stack.sort((a, b) => {
+                    const aIsBottom = a.stackedBelow === null ? 0 : 1;
+                    const bIsBottom = b.stackedBelow === null ? 0 : 1;
+                    return aIsBottom - bIsBottom;
                 });
                 stack.forEach((c, idx) => {
-                    const x = 50 + pos * cellWidth + cellWidth/2;
+                    const x = 50 + pos * cellWidth + cellWidth / 2;
                     const y = yBase - 60 - idx * 22;
                     ctx.fillStyle = c.color;
                     ctx.font = 'bold 16px sans-serif';
@@ -518,7 +462,7 @@
             document.getElementById('result-screen').classList.remove('hidden');
             const canvas = document.getElementById('result-canvas');
             drawTrack(raceState, canvas);
-            const ranking = [...raceState.characters].sort((a,b) => b.position - a.position).map((c,i) => `${i+1}. ${c.name}`).join(' | ');
+            const ranking = [...raceState.characters].sort((a, b) => b.position - a.position).map((c, i) => `${i+1}. ${c.name}`).join(' | ');
             document.getElementById('result-text').textContent = `最终排名：${ranking}`;
         }
 
@@ -548,7 +492,7 @@
             document.getElementById('race-screen').classList.remove('hidden');
             drawTrack(raceState, document.getElementById('race-canvas'));
             document.getElementById('round-num').textContent = '1';
-            document.getElementById('action-hint').textContent = '点击「下一轮」开始第一轮';
+            document.getElementById('action-hint').textContent = '点击「下一步」开始行动';
         });
 
         renderSelection();
