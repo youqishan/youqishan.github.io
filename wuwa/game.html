@@ -21,7 +21,6 @@
         <p class="text-gray-400 mt-2">选择 6 位团子，开启环形赛道大作战！</p>
     </div>
 
-    <!-- 角色选择区 -->
     <div id="selection-screen" class="max-w-5xl mx-auto">
         <h2 class="text-2xl font-bold mb-4 text-center">选择参战团子（已选 <span id="selected-count">0</span>/6）</h2>
         <div id="character-grid" class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8"></div>
@@ -32,7 +31,6 @@
         </div>
     </div>
 
-    <!-- 比赛画面 -->
     <div id="race-screen" class="hidden max-w-6xl mx-auto">
         <div class="text-center mb-4">
             <span class="text-lg">第 <span id="round-num">1</span> 轮</span> &nbsp; | &nbsp;
@@ -44,27 +42,21 @@
             <button id="auto-btn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full transition">自动播放</button>
             <button id="reset-btn" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded-full transition">重新开始</button>
         </div>
-
-        <!-- 信息面板 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <!-- 左侧：当前轮次行动顺序 & 技能触发 -->
             <div class="info-panel">
                 <h3 class="font-bold text-yellow-400 mb-2">📋 当前轮次信息</h3>
                 <div id="round-order" class="text-sm text-gray-300 mb-3"></div>
                 <h4 class="font-semibold text-blue-300 text-sm">⚡ 技能触发</h4>
                 <div id="skill-triggers" class="text-xs text-gray-400 max-h-24 overflow-y-auto"></div>
             </div>
-            <!-- 右侧：参赛团子技能列表 -->
             <div class="info-panel">
                 <h3 class="font-bold text-green-400 mb-2">📜 参战团子技能</h3>
                 <div id="selected-skills" class="text-xs text-gray-300 space-y-1 max-h-40 overflow-y-auto"></div>
             </div>
         </div>
-        <!-- 历史日志 (保留) -->
         <div id="event-log" class="mt-4 p-4 bg-gray-800 rounded-xl max-h-32 overflow-y-auto text-xs text-gray-400"></div>
     </div>
 
-    <!-- 结果画面 -->
     <div id="result-screen" class="hidden max-w-4xl mx-auto text-center">
         <canvas id="result-canvas" width="1000" height="300" class="mx-auto"></canvas>
         <div class="mt-4 text-lg font-bold" id="result-text"></div>
@@ -74,44 +66,25 @@
     </div>
 
     <script>
-        // ==================== 角色数据（含技能描述） ====================
         const allCharacters = [
-            { id: 'lu', name: '陆·赫斯团子', short: '陆', color: '#f87171',
-              skill: '触发推进装置额外前进3格；触发阻遏装置额外后退1格。' },
-            { id: 'xige', name: '西格莉卡团子', short: '西', color: '#c084fc',
-              skill: '每轮投骰后，标记排名紧邻自身且更高的至多两个团子，使其本回少前进1格(最低1)。' },
-            { id: 'dani', name: '达妮娅团子', short: '达', color: '#fb923c',
-              skill: '投出与上次相同点数时，额外前进2格。' },
-            { id: 'feixue', name: '绯雪团子', short: '绯', color: '#38bdf8',
-              skill: '与布大王相遇后，之后每次移动额外前进1格。' },
-            { id: 'kati', name: '卡提希娅团子', short: '卡', color: '#a78bfa',
-              skill: '每场1次：移动结束后若为最后一名，剩余回合60%概率额外前进2格。' },
-            { id: 'feibi', name: '菲比团子', short: '菲', color: '#fbbf24',
-              skill: '50%概率额外前进1格。' },
-            { id: 'qianzhi', name: '千咲团子', short: '千', color: '#34d399',
-              skill: '投出本轮最小点数之一时，额外前进2格。' },
-            { id: 'moning', name: '莫宁团子', short: '莫', color: '#f472b6',
-              skill: '点数固定循环3→2→1。' },
-            { id: 'linnai', name: '琳奈团子', short: '琳', color: '#818cf8',
-              skill: '60%概率双倍点数，20%概率无法移动。' },
-            { id: 'aimi', name: '爱弥斯团子', short: '爱', color: '#facc15',
-              skill: '每场1次：经过中点后，若前方有非布团子，传送到最近团子顶端。' },
-            { id: 'shouan', name: '守岸人团子', short: '守', color: '#4ade80',
-              skill: '骰子只会掷出2或3。' },
-            { id: 'kelai', name: '珂莱塔团子', short: '珂', color: '#fb7185',
-              skill: '28%概率以骰子双倍点数前进。' },
-            { id: 'aogu', name: '奥古斯塔团子', short: '奥', color: '#e2e8f0',
-              skill: '回合开始时若处于堆叠顶端，本回合不行动，下回合最后行动。' },
-            { id: 'younuo', name: '尤诺团子', short: '尤', color: '#94a3b8',
-              skill: '每场1次：经过中点后，将前后其他非布团子传送至自己格子，保持排名顺序。' },
-            { id: 'fuluo', name: '弗洛洛团子', short: '弗', color: '#fdba74',
-              skill: '回合开始时若处于堆叠底层，移动时额外前进3格。' },
-            { id: 'changli', name: '长离团子', short: '长', color: '#cbd5e1',
-              skill: '下方有堆叠时，下回合65%概率最后一个行动。' },
-            { id: 'jinxi', name: '今汐团子', short: '今', color: '#67e8f9',
-              skill: '头顶有堆叠时，40%概率移动到所有团子最上方。' },
-            { id: 'kaka', name: '卡卡罗团子', short: '卡卡', color: '#d8b4fe',
-              skill: '开始移动时若在最后一名，额外前进3格。' }
+            { id: 'lu', name: '陆·赫斯团子', short: '陆', color: '#f87171', skill: '触发推进装置额外前进3格；触发阻遏装置额外后退1格。' },
+            { id: 'xige', name: '西格莉卡团子', short: '西', color: '#c084fc', skill: '每轮投骰后，标记排名紧邻自身且更高的至多两个团子，使其本回少前进1格(最低1)。' },
+            { id: 'dani', name: '达妮娅团子', short: '达', color: '#fb923c', skill: '投出与上次相同点数时，额外前进2格。' },
+            { id: 'feixue', name: '绯雪团子', short: '绯', color: '#38bdf8', skill: '与布大王相遇后，之后每次移动额外前进1格。' },
+            { id: 'kati', name: '卡提希娅团子', short: '卡', color: '#a78bfa', skill: '每场1次：移动结束后若为最后一名，剩余回合60%概率额外前进2格。' },
+            { id: 'feibi', name: '菲比团子', short: '菲', color: '#fbbf24', skill: '50%概率额外前进1格。' },
+            { id: 'qianzhi', name: '千咲团子', short: '千', color: '#34d399', skill: '投出本轮最小点数之一时，额外前进2格。' },
+            { id: 'moning', name: '莫宁团子', short: '莫', color: '#f472b6', skill: '点数固定循环3→2→1。' },
+            { id: 'linnai', name: '琳奈团子', short: '琳', color: '#818cf8', skill: '60%概率双倍点数，20%概率无法移动。' },
+            { id: 'aimi', name: '爱弥斯团子', short: '爱', color: '#facc15', skill: '每场1次：经过中点后，若前方有非布团子，传送到最近团子顶端。' },
+            { id: 'shouan', name: '守岸人团子', short: '守', color: '#4ade80', skill: '骰子只会掷出2或3。' },
+            { id: 'kelai', name: '珂莱塔团子', short: '珂', color: '#fb7185', skill: '28%概率以骰子双倍点数前进。' },
+            { id: 'aogu', name: '奥古斯塔团子', short: '奥', color: '#e2e8f0', skill: '回合开始时若处于堆叠顶端，本回合不行动，下回合最后行动。' },
+            { id: 'younuo', name: '尤诺团子', short: '尤', color: '#94a3b8', skill: '每场1次：经过中点后，将前后其他非布团子传送至自己格子，保持排名顺序。' },
+            { id: 'fuluo', name: '弗洛洛团子', short: '弗', color: '#fdba74', skill: '回合开始时若处于堆叠底层，移动时额外前进3格。' },
+            { id: 'changli', name: '长离团子', short: '长', color: '#cbd5e1', skill: '下方有堆叠时，下回合65%概率最后一个行动。' },
+            { id: 'jinxi', name: '今汐团子', short: '今', color: '#67e8f9', skill: '头顶有堆叠时，40%概率移动到所有团子最上方。' },
+            { id: 'kaka', name: '卡卡罗团子', short: '卡卡', color: '#d8b4fe', skill: '回合开始时若在最后一名，额外前进3格。' }
         ];
 
         let selectedChars = [];
@@ -121,8 +94,7 @@
         function renderSelection() {
             const grid = document.getElementById('character-grid');
             grid.innerHTML = allCharacters.map(c => `
-                <div class="character-card bg-gray-800 rounded-xl p-3 text-center cursor-pointer transition hover:bg-gray-700"
-                     data-id="${c.id}" onclick="toggleChar('${c.id}')">
+                <div class="character-card bg-gray-800 rounded-xl p-3 text-center cursor-pointer transition hover:bg-gray-700" data-id="${c.id}" onclick="toggleChar('${c.id}')">
                     <div class="text-3xl font-bold" style="color:${c.color}">${c.short}</div>
                     <div class="text-xs mt-1 text-gray-300">${c.name}</div>
                 </div>
@@ -132,9 +104,9 @@
         window.toggleChar = function(id) {
             const char = allCharacters.find(c => c.id === id);
             if (!char) return;
-            const index = selectedChars.findIndex(c => c.id === id);
-            if (index >= 0) {
-                selectedChars.splice(index, 1);
+            const idx = selectedChars.findIndex(c => c.id === id);
+            if (idx >= 0) {
+                selectedChars.splice(idx, 1);
                 document.querySelector(`.character-card[data-id="${id}"]`).classList.remove('selected');
             } else {
                 if (selectedChars.length >= 6) return;
@@ -145,7 +117,6 @@
             document.getElementById('start-btn').disabled = selectedChars.length !== 6;
         };
 
-        // ==================== 比赛逻辑 ====================
         const TILES = 32;
         const SPECIAL_TILES = {
             rift: [6, 20],
@@ -165,56 +136,18 @@
                 this.moningCycle = 0;
                 this.marked = false;
                 this.katiUsed = false;
+                this.katiActivated = false;
                 this.aimiUsed = false;
-                this.younuoUsed = false;
-                this.nextRoundLast = false;
-                this.skipThisRound = false;
+                this.aimiSkillPending = false;
+                this.fuluoExtra = false;
+                this.kakaExtra = false;
             }
             get stackTop() { return this.stackedAbove.length > 0 ? this.stackedAbove[0] : this; }
             get stackBottom() { return this.stackedBelow ? this.stackedBelow.stackBottom : this; }
             get isBu() { return this.id === 'bu'; }
         }
 
-        function initRace() {
-            const chars = selectedChars.map(c => new Character(c));
-            const bu = new Character({ id: 'bu', name: '布大王团子', short: '布', color: '#9ca3af', skill: '' });
-            bu.position = TILES;
-            return {
-                characters: chars,
-                bu: bu,
-                round: 1,
-                finished: false,
-                currentOrder: [],
-                currentDices: {},
-                currentIdx: 0,
-                eventLog: [],
-                skillTriggers: []
-            };
-        }
-
-        // 新增：第一轮初始设置（排列堆叠，不移动）
-        function setupFirstRound(state) {
-            const participants = [...state.characters]; // 仅六个团子
-            const order = participants.sort(() => Math.random() - 0.5);
-            const dices = {};
-            order.forEach(c => {
-                dices[c.id] = Math.floor(Math.random() * 3) + 1;
-            });
-            state.currentOrder = order;
-            state.currentDices = dices;
-            state.currentIdx = 0;
-            state.skillTriggers = [];
-            // 按行动顺序逆序排列堆叠：最后一个行动的团子在底部，第一个在顶部
-            const stack = [...order].reverse();
-            setTileStack(state, 0, stack);
-            // 显示信息
-            const info = order.map(c => `${c.short}(🎲${dices[c.id]})`).join(' → ');
-            state.eventLog.push(`--- 第 1 轮 ---`);
-            state.eventLog.push(`行动顺序：${info}`);
-            updateRoundInfo(state);
-            updateSkillTriggers(state);
-        }
-
+        // ---------- 堆叠辅助函数 ----------
         function getTileStack(state, pos) {
             const all = [...state.characters, state.bu];
             const atPos = all.filter(c => c.position === pos && !c.finished);
@@ -223,19 +156,12 @@
             if (!bottom) return [];
             const stack = [];
             let cur = bottom;
-            while (cur) {
-                stack.push(cur);
-                cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null;
-            }
+            while (cur) { stack.push(cur); cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null; }
             return stack;
         }
 
         function setTileStack(state, pos, stack) {
-            stack.forEach(c => {
-                c.position = pos;
-                c.stackedBelow = null;
-                c.stackedAbove = [];
-            });
+            stack.forEach(c => { c.position = pos; c.stackedBelow = null; c.stackedAbove = []; });
             for (let i = 0; i < stack.length; i++) {
                 if (i > 0) {
                     stack[i].stackedBelow = stack[i-1];
@@ -247,13 +173,8 @@
         function detachStack(char) {
             const stack = [];
             let cur = char;
-            while (cur) {
-                stack.push(cur);
-                cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null;
-            }
-            if (char.stackedBelow) {
-                char.stackedBelow.stackedAbove = [];
-            }
+            while (cur) { stack.push(cur); cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null; }
+            if (char.stackedBelow) char.stackedBelow.stackedAbove = [];
             stack.forEach(c => { c.stackedBelow = null; c.stackedAbove = []; });
             return stack;
         }
@@ -261,16 +182,43 @@
         function placeStack(state, stack, targetPos) {
             const existing = getTileStack(state, targetPos);
             if (stack[0].isBu) {
-                const bu = stack[0];
-                const aboveBu = stack.slice(1);
-                const newStack = [bu, ...existing, ...aboveBu];
-                setTileStack(state, targetPos, newStack);
+                const bu = stack[0], aboveBu = stack.slice(1);
+                setTileStack(state, targetPos, [bu, ...existing, ...aboveBu]);
             } else {
-                const newStack = [...existing, ...stack];
-                setTileStack(state, targetPos, newStack);
+                setTileStack(state, targetPos, [...existing, ...stack]);
             }
         }
 
+        // 获取团子在堆叠中的高度（底部为1）
+        function getStackHeight(char) {
+            let h = 0;
+            let bottom = char.stackBottom;
+            if (!bottom) return 1; // 单独一个
+            let cur = bottom;
+            while (cur) {
+                h++;
+                if (cur === char) return h;
+                cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null;
+            }
+            return h;
+        }
+
+        // 获取所有非布团子的排名（从领先到最后），返回数组
+        function getRanking(state) {
+            const active = state.characters.filter(c => !c.finished);
+            return active.sort((a, b) => {
+                if (a.position !== b.position) return b.position - a.position; // 位置大在前
+                return getStackHeight(b) - getStackHeight(a); // 位置相同，堆叠上方在前
+            });
+        }
+
+        // 判断某个团子是否是最后一名（在未完成团子中）
+        function isLastPlace(state, char) {
+            const ranking = getRanking(state);
+            return ranking.length > 0 && ranking[ranking.length - 1] === char;
+        }
+
+        // ---------- 特殊格子处理 ----------
         function applySpecialTile(state, char, pos) {
             if (SPECIAL_TILES.rift.includes(pos)) {
                 const stack = getTileStack(state, pos);
@@ -308,6 +256,7 @@
             return pos;
         }
 
+        // ---------- 移动 ----------
         function moveBu(state, bu, steps) {
             let remaining = steps;
             while (remaining > 0) {
@@ -318,14 +267,11 @@
                 bu.position = nextPos;
                 remaining--;
                 if (remaining === 0) {
-                    const oldPos = nextPos;
                     const newPos = applySpecialTile(state, bu, nextPos);
-                    if (newPos !== oldPos) break;
+                    if (newPos !== nextPos) break;
                 }
             }
-            state.characters.forEach(c => {
-                if (c.position === bu.position && !c.finished) c.metBu = true;
-            });
+            state.characters.forEach(c => { if (c.position === bu.position && !c.finished) c.metBu = true; });
         }
 
         function moveNormal(state, char, steps) {
@@ -341,26 +287,84 @@
             applySpecialTile(state, char, newPos);
         }
 
+        // ---------- 技能判定 ----------
+        function checkAimiSkill(state, char) {
+            if (char.id !== 'aimi' || char.aimiUsed) return;
+            if (char.position >= 16) {
+                const others = state.characters.filter(c => !c.finished && c.position > char.position && c.id !== 'bu');
+                if (others.length > 0) {
+                    const nearest = others.reduce((a, b) => a.position < b.position ? a : b);
+                    const aimiStack = detachStack(char);
+                    placeStack(state, aimiStack, nearest.position);
+                    char.aimiUsed = true;
+                    char.aimiSkillPending = false;
+                    state.skillTriggers.push('爱弥斯团子传送到最近团子顶端');
+                } else {
+                    char.aimiSkillPending = true;
+                }
+            }
+        }
+
+        function checkKatiSkill(state) {
+            const kati = state.characters.find(c => c.id === 'kati' && !c.finished && !c.katiUsed);
+            if (kati && isLastPlace(state, kati)) {
+                kati.katiUsed = true;
+                kati.katiActivated = true;
+                state.skillTriggers.push('卡提希娅团子激活限定技');
+            }
+        }
+
+        // ---------- 回合流程 ----------
+        function setupFirstRound(state) {
+            const participants = [...state.characters];
+            const order = participants.sort(() => Math.random() - 0.5);
+            const dices = {};
+            order.forEach(c => dices[c.id] = Math.floor(Math.random() * 3) + 1);
+            state.currentOrder = order;
+            state.currentDices = dices;
+            state.currentIdx = 0;
+            state.skillTriggers = [];
+            const stack = [...order].reverse();
+            setTileStack(state, 0, stack);
+            const info = order.map(c => `${c.short}(🎲${dices[c.id]})`).join(' → ');
+            state.eventLog.push(`--- 第 1 轮 ---`);
+            state.eventLog.push(`行动顺序：${info}`);
+            updateRoundInfo(state);
+            updateSkillTriggers(state);
+        }
+
         function startNewRound(state) {
             const participants = [...state.characters.filter(c => !c.finished)];
             if (state.round >= 3) participants.push(state.bu);
             const order = participants.sort(() => Math.random() - 0.5);
             const dices = {};
-            order.forEach(c => {
-                if (c.isBu) dices[c.id] = Math.floor(Math.random() * 6) + 1;
-                else dices[c.id] = Math.floor(Math.random() * 3) + 1;
-            });
+            order.forEach(c => dices[c.id] = c.isBu ? Math.floor(Math.random() * 6) + 1 : Math.floor(Math.random() * 3) + 1);
             state.currentOrder = order;
             state.currentDices = dices;
             state.currentIdx = 0;
             state.skillTriggers = [];
 
+            // 回合开始技能判定：弗洛洛、卡卡罗
+            state.characters.forEach(c => {
+                c.fuluoExtra = false;
+                c.kakaExtra = false;
+                if (c.id === 'fuluo' && c.stackedBelow === null && c.stackedAbove.length > 0) {
+                    c.fuluoExtra = true;
+                }
+                if (c.id === 'kaka' && isLastPlace(state, c)) {
+                    c.kakaExtra = true;
+                }
+            });
+
+            // 西格莉卡标记：排名紧邻且更高的至多两个团子
             const xige = order.find(c => c.id === 'xige');
             if (xige && state.round > 1) {
-                const sorted = [...state.characters].sort((a,b) => b.position*1000 - a.position*1000);
-                const idx = sorted.indexOf(xige);
-                let targets = sorted.slice(0, idx).reverse().slice(0,2);
-                targets.forEach(t => t.marked = true);
+                const ranking = getRanking(state);
+                const idx = ranking.indexOf(xige);
+                if (idx > 0) {
+                    const targets = ranking.slice(0, idx).reverse().slice(0, 2); // 排名更高的紧邻两个
+                    targets.forEach(t => t.marked = true);
+                }
             }
 
             const info = order.map(c => `${c.short}(🎲${dices[c.id]})`).join(' → ');
@@ -371,7 +375,6 @@
 
         function nextStep() {
             if (!raceState || raceState.finished) return;
-            // 第一轮已经由setupFirstRound生成，不会为空；后续回合为空时生成
             if (raceState.currentOrder.length === 0) {
                 startNewRound(raceState);
                 drawTrack(raceState, document.getElementById('race-canvas'));
@@ -380,14 +383,16 @@
                 return;
             }
             if (raceState.currentIdx >= raceState.currentOrder.length) {
+                // 回合结束
+                checkKatiSkill(raceState);
                 raceState.round++;
                 raceState.currentOrder = [];
                 raceState.currentIdx = 0;
                 if (raceState.round >= 3) {
                     const active = raceState.characters.filter(c => !c.finished);
                     if (active.length > 0) {
-                        const lastPos = Math.min(...active.map(c => c.position));
-                        if (lastPos > raceState.bu.position) {
+                        const lastPlaceChar = getRanking(raceState).pop(); // 最后一名
+                        if (lastPlaceChar && lastPlaceChar.position > raceState.bu.position) {
                             detachStack(raceState.bu);
                             raceState.bu.position = TILES;
                             raceState.bu.stackedAbove = [];
@@ -405,13 +410,11 @@
             const char = raceState.currentOrder[raceState.currentIdx];
             const dice = raceState.currentDices[char.id];
             let steps = dice;
-            const origDice = dice;
             let skillMsg = '';
 
-            // 技能处理（保持不变）
+            // 技能影响步数
             if (char.id === 'moning') {
-                const cycle = [3,2,1];
-                steps = cycle[char.moningCycle % 3];
+                steps = [3,2,1][char.moningCycle % 3];
                 char.moningCycle++;
                 skillMsg = '莫宁团子固定点数';
             } else if (char.id === 'shouan') {
@@ -425,9 +428,6 @@
                 steps *= 2; skillMsg = '珂莱塔团子双倍点数';
             } else if (char.id === 'feibi' && Math.random() < 0.5) {
                 steps += 1; skillMsg = '菲比团子额外前进1格';
-            } else if (char.id === 'kaka') {
-                const minPos = Math.min(...raceState.characters.map(c => c.position));
-                if (char.position === minPos) { steps += 3; skillMsg = '卡卡罗团子最后一名额外前进3格'; }
             } else if (char.id === 'dani' && char.lastDice === dice) {
                 steps += 2; skillMsg = '达妮娅团子连续相同点数额外前进2格';
             } else if (char.id === 'qianzhi') {
@@ -435,8 +435,12 @@
                 if (dice === Math.min(...allDices)) { steps += 2; skillMsg = '千咲团子最小点数额外前进2格'; }
             } else if (char.id === 'feixue' && char.metBu) {
                 steps += 1; skillMsg = '绯雪团子遇到布大王后额外前进1格';
-            } else if (char.id === 'fuluo' && char.stackedBelow === null) {
+            } else if (char.fuluoExtra) {
                 steps += 3; skillMsg = '弗洛洛团子底层额外前进3格';
+            } else if (char.kakaExtra) {
+                steps += 3; skillMsg = '卡卡罗团子最后一名额外前进3格';
+            } else if (char.katiActivated && Math.random() < 0.6) {
+                steps += 2; skillMsg = '卡提希娅团子额外前进2格';
             }
             if (char.marked) {
                 const oldSteps = steps;
@@ -446,21 +450,22 @@
             }
             char.lastDice = dice;
 
+            const origDice = dice;
             const stepInfo = (steps !== origDice || skillMsg) ? `（技能调整后 ${steps} 步）` : '';
             raceState.eventLog.push(`🎲 ${char.short} 掷出 ${origDice}，前进 ${steps} 格${stepInfo}`);
-            if (skillMsg) {
-                raceState.skillTriggers.push(`${char.short}: ${skillMsg}`);
-            }
+            if (skillMsg) raceState.skillTriggers.push(`${char.short}: ${skillMsg}`);
 
-            if (char.isBu) {
-                moveBu(raceState, char, steps);
-            } else {
-                moveNormal(raceState, char, steps);
+            if (char.isBu) moveBu(raceState, char, steps);
+            else moveNormal(raceState, char, steps);
+
+            // 爱弥斯技能判定
+            checkAimiSkill(raceState, char);
+            if (char.id === 'aimi' && char.aimiSkillPending && !char.aimiUsed) {
+                checkAimiSkill(raceState, char);
             }
 
             raceState.currentIdx++;
-            document.getElementById('action-hint').textContent =
-                `行动：${char.short}（${raceState.currentIdx}/${raceState.currentOrder.length}）`;
+            document.getElementById('action-hint').textContent = `行动：${char.short}（${raceState.currentIdx}/${raceState.currentOrder.length}）`;
             updateSkillTriggers(raceState);
             drawTrack(raceState, document.getElementById('race-canvas'));
 
@@ -473,23 +478,17 @@
         }
 
         function updateRoundInfo(state) {
-            const orderDiv = document.getElementById('round-order');
-            if (state.currentOrder.length === 0) {
-                orderDiv.textContent = '暂无';
-                return;
-            }
-            const list = state.currentOrder.map(c => `${c.short} (🎲${state.currentDices[c.id]})`).join(' → ');
-            orderDiv.textContent = `行动顺序：${list}`;
+            const div = document.getElementById('round-order');
+            if (state.currentOrder.length === 0) { div.textContent = '暂无'; return; }
+            div.textContent = `行动顺序：${state.currentOrder.map(c => `${c.short} (🎲${state.currentDices[c.id]})`).join(' → ')}`;
         }
 
         function updateSkillTriggers(state) {
-            const div = document.getElementById('skill-triggers');
-            div.innerHTML = state.skillTriggers.slice().reverse().map(s => `<div>• ${s}</div>`).join('') || '暂无';
+            document.getElementById('skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `<div>• ${s}</div>`).join('') || '暂无';
         }
 
         function showSelectedSkills() {
-            const container = document.getElementById('selected-skills');
-            container.innerHTML = selectedChars.map(c => `<div><span style="color:${c.color}">${c.short}</span>：${c.skill}</div>`).join('');
+            document.getElementById('selected-skills').innerHTML = selectedChars.map(c => `<div><span style="color:${c.color}">${c.short}</span>：${c.skill}</div>`).join('');
         }
 
         // ==================== 可视化 ====================
@@ -498,7 +497,6 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const cellWidth = (canvas.width - 100) / (TILES + 1);
             const yBase = 180;
-
             for (let i = 0; i <= TILES; i++) {
                 const x = 50 + i * cellWidth;
                 ctx.fillStyle = '#1f2937';
@@ -507,38 +505,19 @@
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(i, x + cellWidth / 2, yBase + 5);
-                if (SPECIAL_TILES.rift.includes(i)) {
-                    ctx.fillStyle = '#ef4444';
-                    ctx.beginPath();
-                    ctx.arc(x + cellWidth / 2, yBase - 30, 8, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-                if (SPECIAL_TILES.block.includes(i)) {
-                    ctx.fillStyle = '#f59e0b';
-                    ctx.fillText('◀', x + cellWidth / 2, yBase - 30);
-                }
-                if (SPECIAL_TILES.boost.includes(i)) {
-                    ctx.fillStyle = '#10b981';
-                    ctx.fillText('▶', x + cellWidth / 2, yBase - 30);
-                }
+                if (SPECIAL_TILES.rift.includes(i)) { ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x + cellWidth / 2, yBase - 30, 8, 0, 2 * Math.PI); ctx.fill(); }
+                if (SPECIAL_TILES.block.includes(i)) { ctx.fillStyle = '#f59e0b'; ctx.fillText('◀', x + cellWidth / 2, yBase - 30); }
+                if (SPECIAL_TILES.boost.includes(i)) { ctx.fillStyle = '#10b981'; ctx.fillText('▶', x + cellWidth / 2, yBase - 30); }
             }
-
             const allChars = [...state.characters, state.bu];
-            const positions = {};
-            allChars.forEach(c => {
-                if (!positions[c.position]) positions[c.position] = [];
-                positions[c.position].push(c);
-            });
-            for (let pos in positions) {
-                let stack = positions[pos];
-                const bottom = stack.find(c => c.stackedBelow === null);
+            const posMap = {};
+            allChars.forEach(c => { if (!posMap[c.position]) posMap[c.position] = []; posMap[c.position].push(c); });
+            for (let pos in posMap) {
+                const bottom = posMap[pos].find(c => c.stackedBelow === null);
                 if (!bottom) continue;
                 const ordered = [];
                 let cur = bottom;
-                while (cur) {
-                    ordered.push(cur);
-                    cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null;
-                }
+                while (cur) { ordered.push(cur); cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null; }
                 ordered.forEach((c, idx) => {
                     const x = 50 + pos * cellWidth + cellWidth / 2;
                     const y = yBase - 60 - idx * 22;
@@ -553,47 +532,39 @@
         function showResult() {
             document.getElementById('race-screen').classList.add('hidden');
             document.getElementById('result-screen').classList.remove('hidden');
-            const canvas = document.getElementById('result-canvas');
-            drawTrack(raceState, canvas);
-            const ranking = [...raceState.characters]
-                .sort((a, b) => b.position - a.position)
-                .map((c, i) => `${i+1}. ${c.name}`).join(' | ');
+            drawTrack(raceState, document.getElementById('result-canvas'));
+            const ranking = getRanking(raceState).map((c, i) => `${i+1}. ${c.name}`).join(' | ');
             document.getElementById('result-text').textContent = `最终排名：${ranking}`;
         }
 
-        // 按钮事件
         document.getElementById('next-step-btn').addEventListener('click', nextStep);
         document.getElementById('auto-btn').addEventListener('click', () => {
-            if (autoTimer) {
-                clearInterval(autoTimer);
-                autoTimer = null;
-                document.getElementById('auto-btn').textContent = '自动播放';
-            } else {
+            if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('auto-btn').textContent = '自动播放'; }
+            else {
                 document.getElementById('auto-btn').textContent = '停止';
-                autoTimer = setInterval(() => {
-                    if (!raceState || raceState.finished) {
-                        clearInterval(autoTimer);
-                        autoTimer = null;
-                        return;
-                    }
-                    nextStep();
-                }, 800);
+                autoTimer = setInterval(() => { if (!raceState || raceState.finished) { clearInterval(autoTimer); autoTimer = null; return; } nextStep(); }, 800);
             }
         });
         document.getElementById('reset-btn').addEventListener('click', () => location.reload());
         document.getElementById('start-btn').addEventListener('click', () => {
             if (selectedChars.length !== 6) return;
             raceState = initRace();
-            setupFirstRound(raceState);   // 关键：初始化堆叠与第一轮顺序
+            setupFirstRound(raceState);
             document.getElementById('selection-screen').classList.add('hidden');
             document.getElementById('race-screen').classList.remove('hidden');
             showSelectedSkills();
             drawTrack(raceState, document.getElementById('race-canvas'));
             document.getElementById('round-num').textContent = '1';
             document.getElementById('action-hint').textContent = '点击「下一步」开始第一轮';
-            // 信息面板已由 setupFirstRound 更新
             document.getElementById('skill-triggers').innerHTML = '暂无';
         });
+
+        function initRace() {
+            const chars = selectedChars.map(c => new Character(c));
+            const bu = new Character({ id: 'bu', name: '布大王团子', short: '布', color: '#9ca3af', skill: '' });
+            bu.position = TILES;
+            return { characters: chars, bu: bu, round: 1, finished: false, currentOrder: [], currentDices: {}, currentIdx: 0, eventLog: [], skillTriggers: [] };
+        }
 
         renderSelection();
     </script>
