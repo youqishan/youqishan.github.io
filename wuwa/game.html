@@ -7,62 +7,143 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .character-card.selected {
-            border: 3px solid #facc15;
-            box-shadow: 0 0 12px #facc15;
-        }
+        .character-card.selected { border: 3px solid #facc15; box-shadow: 0 0 12px #facc15; }
         canvas { display: block; margin: 0 auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .info-panel { background: #111827; border-radius: 0.75rem; padding: 1rem; }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-4">
-    <div class="text-center mt-4 mb-8">
-        <h1 class="text-4xl font-bold">🍡 团子快跑</h1>
-        <p class="text-gray-400 mt-2">选择 6 位团子，开启环形赛道大作战！</p>
-    </div>
 
-    <div id="selection-screen" class="max-w-5xl mx-auto">
-        <h2 class="text-2xl font-bold mb-4 text-center">选择参战团子（已选 <span id="selected-count">0</span>/6）</h2>
-        <div id="character-grid" class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8"></div>
-        <div class="text-center">
-            <button id="start-btn" class="bg-yellow-500 hover:bg-yellow-400 text-black px-10 py-3 rounded-full text-xl font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                <i class="fa-solid fa-play mr-2"></i>开始比赛
+    <!-- 模式选择 -->
+    <div id="mode-screen" class="max-w-lg mx-auto mt-20 text-center">
+        <h1 class="text-4xl font-bold mb-12">🍡 团子快跑</h1>
+        <div class="space-y-6">
+            <button id="free-mode-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-full text-xl font-bold transition">
+                <i class="fa-solid fa-gamepad mr-2"></i>自由竞赛
+            </button>
+            <button id="tournament-mode-btn" class="w-full bg-purple-600 hover:bg-purple-500 text-white px-10 py-4 rounded-full text-xl font-bold transition">
+                <i class="fa-solid fa-trophy mr-2"></i>锦标赛
             </button>
         </div>
     </div>
 
-    <div id="race-screen" class="hidden max-w-6xl mx-auto">
+    <!-- 自由竞赛选择区 -->
+    <div id="free-selection" class="hidden max-w-5xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4 text-center">选择参战团子（已选 <span id="selected-count">0</span>/6）</h2>
+        <div id="character-grid" class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8"></div>
+        <div class="text-center mb-8">
+            <button id="free-start-btn" class="bg-yellow-500 hover:bg-yellow-400 text-black px-10 py-3 rounded-full text-xl font-bold transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <i class="fa-solid fa-play mr-2"></i>开始比赛
+            </button>
+        </div>
+        <!-- 18位团子全部技能展示 -->
+        <div class="bg-gray-800 p-4 rounded-xl">
+            <h3 class="font-bold text-green-400 mb-2 text-lg">📜 全部团子技能一览</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-300">
+                <script>
+                    // 此部分将在渲染时由JS填充，避免直接写在HTML中导致太长
+                </script>
+                <div id="all-skills-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自由竞赛比赛画面 -->
+    <div id="free-race-screen" class="hidden max-w-6xl mx-auto">
         <div class="text-center mb-4">
             <span class="text-lg">第 <span id="round-num">1</span> 轮</span> &nbsp; | &nbsp;
             <span id="action-hint" class="text-gray-400">点击「下一步」开始</span>
         </div>
-        <canvas id="race-canvas" width="1000" height="300" class="cursor-pointer"></canvas>
+        <canvas id="free-canvas" width="1000" height="300" class="cursor-pointer"></canvas>
         <div class="text-center mt-4 space-x-4">
             <button id="next-step-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full transition">下一步 ▶</button>
             <button id="auto-btn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full transition">自动播放</button>
-            <button id="reset-btn" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded-full transition">重新开始</button>
+            <button id="free-reset-btn" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded-full transition">重新开始</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div class="info-panel">
                 <h3 class="font-bold text-yellow-400 mb-2">📋 当前轮次信息</h3>
-                <div id="round-order" class="text-sm text-gray-300 mb-3"></div>
+                <div id="free-round-order" class="text-sm text-gray-300 mb-3"></div>
                 <h4 class="font-semibold text-blue-300 text-sm">⚡ 技能触发</h4>
-                <div id="skill-triggers" class="text-xs text-gray-400 max-h-24 overflow-y-auto"></div>
+                <div id="free-skill-triggers" class="text-xs text-gray-400 max-h-24 overflow-y-auto"></div>
             </div>
             <div class="info-panel">
                 <h3 class="font-bold text-green-400 mb-2">📜 参战团子技能</h3>
-                <div id="selected-skills" class="text-xs text-gray-300 space-y-1 max-h-40 overflow-y-auto"></div>
+                <div id="free-selected-skills" class="text-xs text-gray-300 space-y-1 max-h-40 overflow-y-auto"></div>
             </div>
         </div>
-        <div id="event-log" class="mt-4 p-4 bg-gray-800 rounded-xl max-h-32 overflow-y-auto text-xs text-gray-400"></div>
+        <div id="free-event-log" class="mt-4 p-4 bg-gray-800 rounded-xl max-h-32 overflow-y-auto text-xs text-gray-400"></div>
     </div>
 
-    <div id="result-screen" class="hidden max-w-4xl mx-auto text-center">
-        <canvas id="result-canvas" width="1000" height="300" class="mx-auto"></canvas>
-        <div class="mt-4 text-lg font-bold" id="result-text"></div>
+    <!-- 自由竞赛结果画面 -->
+    <div id="free-result-screen" class="hidden max-w-4xl mx-auto text-center">
+        <canvas id="free-result-canvas" width="1000" height="300" class="mx-auto"></canvas>
+        <div class="mt-4 text-lg font-bold" id="free-result-text"></div>
         <button onclick="location.reload()" class="mt-6 bg-blue-600 text-white px-8 py-2 rounded-full hover:bg-blue-700 transition">
-            <i class="fa-solid fa-rotate-right mr-2"></i>再来一局
+            <i class="fa-solid fa-rotate-right mr-2"></i>返回主页
         </button>
+    </div>
+
+    <!-- 锦标赛界面 -->
+    <div id="tournament-screen" class="hidden max-w-4xl mx-auto">
+        <div class="text-center mb-4">
+            <h2 class="text-2xl font-bold">🏆 锦标赛</h2>
+            <p id="tournament-stage" class="text-gray-400 mt-1"></p>
+        </div>
+        <div id="tournament-info" class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <span class="text-yellow-400">💰 持有投注币：</span><span id="coin-amount">10000</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <span class="text-green-400">✅ 押注获胜次数：<span id="win-count">0</span> / 比赛进度：<span id="progress">0/13</span></span>
+            </div>
+        </div>
+        <!-- 分组提示 -->
+        <div id="group-info" class="bg-gray-800 p-4 rounded-xl mb-4 text-sm"></div>
+        <!-- 比赛前投注面板 -->
+        <div id="betting-panel" class="bg-gray-800 p-6 rounded-xl mb-6">
+            <h3 class="text-xl font-bold mb-3">📊 本场赔率</h3>
+            <div id="odds-list" class="grid grid-cols-3 gap-2 mb-4"></div>
+            <div class="flex flex-wrap items-center gap-4">
+                <span>选择押注团子：</span>
+                <select id="bet-target" class="bg-gray-700 text-white px-3 py-2 rounded-lg"></select>
+                <span>押注比例：</span>
+                <select id="bet-ratio" class="bg-gray-700 text-white px-3 py-2 rounded-lg">
+                    <option value="0">0%</option>
+                    <option value="0.25">25%</option>
+                    <option value="0.5">50%</option>
+                    <option value="0.75">75%</option>
+                    <option value="1">100%</option>
+                </select>
+                <button id="confirm-bet-btn" class="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-2 rounded-full font-bold transition">确认投注</button>
+            </div>
+        </div>
+        <!-- 比赛进行中的控制 -->
+        <div id="tournament-race-control" class="text-center mb-4 hidden">
+            <button id="tournament-next-step" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full transition">下一步 ▶</button>
+            <button id="tournament-auto-btn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full transition ml-4">自动播放</button>
+        </div>
+        <canvas id="tournament-canvas" width="900" height="280" class="mt-4 mx-auto"></canvas>
+        <!-- 比赛信息面板（与自由竞赛相同） -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6" id="tournament-race-info">
+            <div class="info-panel">
+                <h3 class="font-bold text-yellow-400 mb-2">📋 当前轮次信息</h3>
+                <div id="t-round-order" class="text-sm text-gray-300 mb-3"></div>
+                <h4 class="font-semibold text-blue-300 text-sm">⚡ 技能触发</h4>
+                <div id="t-skill-triggers" class="text-xs text-gray-400 max-h-24 overflow-y-auto"></div>
+            </div>
+            <div class="info-panel">
+                <h3 class="font-bold text-green-400 mb-2">📜 参战团子技能</h3>
+                <div id="t-selected-skills" class="text-xs text-gray-300 space-y-1 max-h-40 overflow-y-auto"></div>
+            </div>
+        </div>
+        <div id="tournament-result" class="mt-4 text-center text-lg font-bold"></div>
+        <div id="final-result" class="hidden mt-8 bg-gray-800 p-6 rounded-xl text-center">
+            <h3 class="text-2xl font-bold mb-4">🏅 锦标赛结束</h3>
+            <p id="final-win-count" class="mb-2"></p>
+            <p id="final-coin" class="mb-4"></p>
+            <button onclick="location.reload()" class="bg-blue-600 text-white px-8 py-2 rounded-full hover:bg-blue-700 transition">返回主页</button>
+        </div>
     </div>
 
     <script>
@@ -87,41 +168,10 @@
             { id: 'kaka', name: '卡卡罗团子', short: '卡卡', color: '#d8b4fe', skill: '回合开始时若在最后一名，额外前进3格。' }
         ];
 
-        let selectedChars = [];
-        let raceState = null;
-        let autoTimer = null;
-
-        function renderSelection() {
-            const grid = document.getElementById('character-grid');
-            grid.innerHTML = allCharacters.map(c => `
-                <div class="character-card bg-gray-800 rounded-xl p-3 text-center cursor-pointer transition hover:bg-gray-700" data-id="${c.id}" onclick="toggleChar('${c.id}')">
-                    <div class="text-3xl font-bold" style="color:${c.color}">${c.short}</div>
-                    <div class="text-xs mt-1 text-gray-300">${c.name}</div>
-                </div>
-            `).join('');
-        }
-
-        window.toggleChar = function(id) {
-            const char = allCharacters.find(c => c.id === id);
-            if (!char) return;
-            const idx = selectedChars.findIndex(c => c.id === id);
-            if (idx >= 0) {
-                selectedChars.splice(idx, 1);
-                document.querySelector(`.character-card[data-id="${id}"]`).classList.remove('selected');
-            } else {
-                if (selectedChars.length >= 6) return;
-                selectedChars.push(char);
-                document.querySelector(`.character-card[data-id="${id}"]`).classList.add('selected');
-            }
-            document.getElementById('selected-count').textContent = selectedChars.length;
-            document.getElementById('start-btn').disabled = selectedChars.length !== 6;
-        };
-
+        // ================= 通用逻辑 =================
         const TILES = 32;
         const SPECIAL_TILES = {
-            rift: [6, 20],
-            block: [10, 28],
-            boost: [3, 11, 16, 23]
+            rift: [6, 20], block: [10, 28], boost: [3, 11, 16, 23]
         };
 
         class Character {
@@ -147,7 +197,6 @@
             get isBu() { return this.id === 'bu'; }
         }
 
-        // ---------- 堆叠辅助函数 ----------
         function getTileStack(state, pos) {
             const all = [...state.characters, state.bu];
             const atPos = all.filter(c => c.position === pos && !c.finished);
@@ -163,10 +212,7 @@
         function setTileStack(state, pos, stack) {
             stack.forEach(c => { c.position = pos; c.stackedBelow = null; c.stackedAbove = []; });
             for (let i = 0; i < stack.length; i++) {
-                if (i > 0) {
-                    stack[i].stackedBelow = stack[i-1];
-                    stack[i-1].stackedAbove = [stack[i]];
-                }
+                if (i > 0) { stack[i].stackedBelow = stack[i-1]; stack[i-1].stackedAbove = [stack[i]]; }
             }
         }
 
@@ -182,49 +228,44 @@
         function placeStack(state, stack, targetPos) {
             const existing = getTileStack(state, targetPos);
             if (stack[0].isBu) {
-                const bu = stack[0], aboveBu = stack.slice(1);
-                setTileStack(state, targetPos, [bu, ...existing, ...aboveBu]);
+                setTileStack(state, targetPos, [stack[0], ...existing, ...stack.slice(1)]);
             } else {
                 setTileStack(state, targetPos, [...existing, ...stack]);
             }
         }
 
-        // 获取团子在堆叠中的高度（底部为1）
         function getStackHeight(char) {
-            let h = 0;
-            let bottom = char.stackBottom;
-            if (!bottom) return 1; // 单独一个
+            let h = 0, bottom = char.stackBottom;
+            if (!bottom) return 1;
             let cur = bottom;
-            while (cur) {
-                h++;
-                if (cur === char) return h;
-                cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null;
-            }
+            while (cur) { h++; if (cur === char) return h; cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null; }
             return h;
         }
 
-        // 获取所有非布团子的排名（从领先到最后），返回数组
         function getRanking(state) {
             const active = state.characters.filter(c => !c.finished);
-            return active.sort((a, b) => {
-                if (a.position !== b.position) return b.position - a.position; // 位置大在前
-                return getStackHeight(b) - getStackHeight(a); // 位置相同，堆叠上方在前
+            return active.sort((a,b) => {
+                if (a.position !== b.position) return b.position - a.position;
+                return getStackHeight(b) - getStackHeight(a);
             });
         }
 
-        // 判断某个团子是否是最后一名（在未完成团子中）
         function isLastPlace(state, char) {
             const ranking = getRanking(state);
-            return ranking.length > 0 && ranking[ranking.length - 1] === char;
+            return ranking.length > 0 && ranking[ranking.length-1] === char;
         }
 
-        // ---------- 特殊格子处理 ----------
         function applySpecialTile(state, char, pos) {
             if (SPECIAL_TILES.rift.includes(pos)) {
                 const stack = getTileStack(state, pos);
                 if (stack.length > 1) {
-                    const shuffled = stack.sort(() => Math.random() - 0.5);
-                    setTileStack(state, pos, shuffled);
+                    const buIdx = stack.findIndex(c => c.isBu);
+                    if (buIdx !== -1) {
+                        const nonBu = stack.filter(c => !c.isBu).sort(() => Math.random() - 0.5);
+                        setTileStack(state, pos, [stack[buIdx], ...nonBu]);
+                    } else {
+                        setTileStack(state, pos, stack.sort(() => Math.random() - 0.5));
+                    }
                     state.skillTriggers.push('🌪️ 时空裂隙打乱了堆叠');
                 }
                 return pos;
@@ -235,8 +276,7 @@
                 placeStack(state, stack, newPos);
                 let extra = '';
                 if (char.id === 'lu') {
-                    const furtherPos = Math.max(0, newPos - 1);
-                    placeStack(state, getTileStack(state, newPos), furtherPos);
+                    placeStack(state, getTileStack(state, newPos), Math.max(0, newPos - 1));
                     extra = '，陆·赫斯团子额外后退1格';
                 }
                 state.skillTriggers.push(`⛔ 阻遏装置推回${newPos}${extra}`);
@@ -244,26 +284,21 @@
             }
             if (SPECIAL_TILES.boost.includes(pos)) {
                 const stack = getTileStack(state, pos);
-                let extra = 1;
-                if (char.id === 'lu') extra = 4;
+                let extra = char.id === 'lu' ? 4 : 1;
                 const newPos = Math.min(TILES, pos + extra);
                 placeStack(state, stack, newPos);
-                let msg = `🚀 推进装置推至${newPos}`;
-                if (char.id === 'lu') msg += '（陆·赫斯团子额外前进3格）';
-                state.skillTriggers.push(msg);
+                state.skillTriggers.push(`🚀 推进装置推至${newPos}`);
                 return newPos;
             }
             return pos;
         }
 
-        // ---------- 移动 ----------
         function moveBu(state, bu, steps) {
             let remaining = steps;
             while (remaining > 0) {
                 const nextPos = bu.position - 1;
                 if (nextPos < 0) break;
-                const buStack = detachStack(bu);
-                placeStack(state, buStack, nextPos);
+                placeStack(state, detachStack(bu), nextPos);
                 bu.position = nextPos;
                 remaining--;
                 if (remaining === 0) {
@@ -276,32 +311,23 @@
 
         function moveNormal(state, char, steps) {
             let newPos = char.position + steps;
-            if (newPos >= TILES) {
-                newPos = TILES;
-                char.finished = true;
-                state.finished = true;
-            }
+            if (newPos >= TILES) { newPos = TILES; char.finished = true; state.finished = true; }
             newPos = Math.min(TILES, Math.max(0, newPos));
-            const charStack = detachStack(char);
-            placeStack(state, charStack, newPos);
+            placeStack(state, detachStack(char), newPos);
             applySpecialTile(state, char, newPos);
         }
 
-        // ---------- 技能判定 ----------
         function checkAimiSkill(state, char) {
             if (char.id !== 'aimi' || char.aimiUsed) return;
             if (char.position >= 16) {
                 const others = state.characters.filter(c => !c.finished && c.position > char.position && c.id !== 'bu');
                 if (others.length > 0) {
-                    const nearest = others.reduce((a, b) => a.position < b.position ? a : b);
-                    const aimiStack = detachStack(char);
-                    placeStack(state, aimiStack, nearest.position);
+                    const nearest = others.reduce((a,b) => a.position < b.position ? a : b);
+                    placeStack(state, detachStack(char), nearest.position);
                     char.aimiUsed = true;
                     char.aimiSkillPending = false;
                     state.skillTriggers.push('爱弥斯团子传送到最近团子顶端');
-                } else {
-                    char.aimiSkillPending = true;
-                }
+                } else char.aimiSkillPending = true;
             }
         }
 
@@ -314,259 +340,529 @@
             }
         }
 
-        // ---------- 回合流程 ----------
-        function setupFirstRound(state) {
-            const participants = [...state.characters];
-            const order = participants.sort(() => Math.random() - 0.5);
+        function drawRaceState(state, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            const cw = (canvas.width-100)/33;
+            const y0 = 180;
+            for(let i=0;i<=32;i++){
+                const x=50+i*cw;
+                ctx.fillStyle='#1f2937'; ctx.fillRect(x,y0-20,cw-2,40);
+                ctx.fillStyle='#6b7280'; ctx.font='12px sans-serif'; ctx.textAlign='center'; ctx.fillText(i,x+cw/2,y0+5);
+                if(SPECIAL_TILES.rift.includes(i)){ ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(x+cw/2,y0-30,8,0,2*Math.PI); ctx.fill(); }
+                if(SPECIAL_TILES.block.includes(i)){ ctx.fillStyle='#f59e0b'; ctx.fillText('◀',x+cw/2,y0-30); }
+                if(SPECIAL_TILES.boost.includes(i)){ ctx.fillStyle='#10b981'; ctx.fillText('▶',x+cw/2,y0-30); }
+            }
+            const all = [...state.characters, state.bu];
+            const pmap = {};
+            all.forEach(c => { if(!pmap[c.position]) pmap[c.position]=[]; pmap[c.position].push(c); });
+            for(let p in pmap){
+                const bottom = pmap[p].find(c=>c.stackedBelow===null);
+                if(!bottom) continue;
+                const ordered = []; let cur=bottom;
+                while(cur){ ordered.push(cur); cur=cur.stackedAbove.length>0?cur.stackedAbove[0]:null; }
+                ordered.forEach((c,idx)=>{
+                    ctx.fillStyle=c.color; ctx.font='bold 16px sans-serif'; ctx.textAlign='center';
+                    ctx.fillText(c.short, 50+p*cw+cw/2, y0-60-idx*22);
+                });
+            }
+        }
+
+        // ================= 自由竞赛逻辑 =================
+        let freeSelected = [];
+        let freeRace = null;
+        let freeAutoTimer = null;
+
+        function freeRenderSelection() {
+            const grid = document.getElementById('character-grid');
+            grid.innerHTML = allCharacters.map(c => `
+                <div class="character-card bg-gray-800 rounded-xl p-3 text-center cursor-pointer transition hover:bg-gray-700"
+                     data-id="${c.id}" onclick="freeToggleChar('${c.id}')">
+                    <div class="text-3xl font-bold" style="color:${c.color}">${c.short}</div>
+                    <div class="text-xs mt-1 text-gray-300">${c.name}</div>
+                </div>
+            `).join('');
+            // 填充18个团子技能
+            const skillContainer = document.getElementById('all-skills-container');
+            if (skillContainer) {
+                skillContainer.innerHTML = allCharacters.map(c => `<div><span style="color:${c.color}">${c.short}</span> ${c.name}：${c.skill}</div>`).join('');
+            }
+        }
+
+        window.freeToggleChar = function(id) {
+            const char = allCharacters.find(c => c.id === id);
+            if (!char) return;
+            const idx = freeSelected.findIndex(c => c.id === id);
+            if (idx >= 0) {
+                freeSelected.splice(idx, 1);
+                document.querySelector(`.character-card[data-id="${id}"]`).classList.remove('selected');
+            } else {
+                if (freeSelected.length >= 6) return;
+                freeSelected.push(char);
+                document.querySelector(`.character-card[data-id="${id}"]`).classList.add('selected');
+            }
+            document.getElementById('selected-count').textContent = freeSelected.length;
+            document.getElementById('free-start-btn').disabled = freeSelected.length !== 6;
+        };
+
+        function freeSetupFirstRound(state) {
+            const order = [...state.characters].sort(() => Math.random() - 0.5);
             const dices = {};
             order.forEach(c => dices[c.id] = Math.floor(Math.random() * 3) + 1);
             state.currentOrder = order;
             state.currentDices = dices;
             state.currentIdx = 0;
             state.skillTriggers = [];
-            const stack = [...order].reverse();
-            setTileStack(state, 0, stack);
-            const info = order.map(c => `${c.short}(🎲${dices[c.id]})`).join(' → ');
-            state.eventLog.push(`--- 第 1 轮 ---`);
-            state.eventLog.push(`行动顺序：${info}`);
-            updateRoundInfo(state);
-            updateSkillTriggers(state);
+            setTileStack(state, 0, [...order].reverse());
+            state.eventLog = [`--- 第 1 轮 ---`, `行动顺序：${order.map(c=>`${c.short}(🎲${dices[c.id]})`).join(' → ')}`];
+            document.getElementById('free-round-order').textContent = state.eventLog[1];
+            document.getElementById('free-skill-triggers').innerHTML = '暂无';
         }
 
-        function startNewRound(state) {
+        function freeStartNewRound(state) {
             const participants = [...state.characters.filter(c => !c.finished)];
             if (state.round >= 3) participants.push(state.bu);
             const order = participants.sort(() => Math.random() - 0.5);
             const dices = {};
-            order.forEach(c => dices[c.id] = c.isBu ? Math.floor(Math.random() * 6) + 1 : Math.floor(Math.random() * 3) + 1);
+            order.forEach(c => dices[c.id] = c.isBu ? Math.floor(Math.random()*6)+1 : Math.floor(Math.random()*3)+1);
             state.currentOrder = order;
             state.currentDices = dices;
             state.currentIdx = 0;
             state.skillTriggers = [];
-
-            // 回合开始技能判定：弗洛洛、卡卡罗
+            state.characters.forEach(c => { c.fuluoExtra = false; c.kakaExtra = false; });
             state.characters.forEach(c => {
-                c.fuluoExtra = false;
-                c.kakaExtra = false;
-                if (c.id === 'fuluo' && c.stackedBelow === null && c.stackedAbove.length > 0) {
-                    c.fuluoExtra = true;
-                }
-                if (c.id === 'kaka' && isLastPlace(state, c)) {
-                    c.kakaExtra = true;
-                }
+                if (c.id === 'fuluo' && c.stackedBelow === null && c.stackedAbove.length > 0) c.fuluoExtra = true;
+                if (c.id === 'kaka' && isLastPlace(state, c)) c.kakaExtra = true;
             });
-
-            // 西格莉卡标记：排名紧邻且更高的至多两个团子
             const xige = order.find(c => c.id === 'xige');
             if (xige && state.round > 1) {
                 const ranking = getRanking(state);
                 const idx = ranking.indexOf(xige);
-                if (idx > 0) {
-                    const targets = ranking.slice(0, idx).reverse().slice(0, 2); // 排名更高的紧邻两个
-                    targets.forEach(t => t.marked = true);
-                }
+                if (idx > 0) ranking.slice(0, idx).reverse().slice(0,2).forEach(t => t.marked = true);
             }
-
-            const info = order.map(c => `${c.short}(🎲${dices[c.id]})`).join(' → ');
-            state.eventLog.push(`--- 第 ${state.round} 轮 ---`);
-            state.eventLog.push(`行动顺序：${info}`);
-            updateRoundInfo(state);
+            state.eventLog = [`--- 第 ${state.round} 轮 ---`, `行动顺序：${order.map(c=>`${c.short}(🎲${dices[c.id]})`).join(' → ')}`];
+            document.getElementById('free-round-order').textContent = state.eventLog[1];
+            document.getElementById('free-skill-triggers').innerHTML = '暂无';
         }
 
-        function nextStep() {
-            if (!raceState || raceState.finished) return;
-            if (raceState.currentOrder.length === 0) {
-                startNewRound(raceState);
-                drawTrack(raceState, document.getElementById('race-canvas'));
-                document.getElementById('round-num').textContent = raceState.round;
+        function freeNextStep() {
+            const state = freeRace;
+            if (!state || state.finished) return;
+            if (state.currentOrder.length === 0) {
+                freeStartNewRound(state);
+                drawRaceState(state, 'free-canvas');
+                document.getElementById('round-num').textContent = state.round;
                 document.getElementById('action-hint').textContent = '本轮开始';
                 return;
             }
-            if (raceState.currentIdx >= raceState.currentOrder.length) {
-                // 回合结束
-                checkKatiSkill(raceState);
-                raceState.round++;
-                raceState.currentOrder = [];
-                raceState.currentIdx = 0;
-                if (raceState.round >= 3) {
-                    const active = raceState.characters.filter(c => !c.finished);
+            if (state.currentIdx >= state.currentOrder.length) {
+                checkKatiSkill(state);
+                state.round++;
+                state.currentOrder = [];
+                state.currentIdx = 0;
+                if (state.round >= 3) {
+                    const active = state.characters.filter(c => !c.finished);
                     if (active.length > 0) {
-                        const lastPlaceChar = getRanking(raceState).pop(); // 最后一名
-                        if (lastPlaceChar && lastPlaceChar.position > raceState.bu.position) {
-                            detachStack(raceState.bu);
-                            raceState.bu.position = TILES;
-                            raceState.bu.stackedAbove = [];
-                            raceState.bu.stackedBelow = null;
-                            raceState.eventLog.push('布大王被所有团子超越，返回终点！');
+                        const last = getRanking(state).pop();
+                        if (last && last.position > state.bu.position) {
+                            detachStack(state.bu);
+                            state.bu.position = TILES;
+                            state.bu.stackedBelow = null;
+                            state.bu.stackedAbove = [];
+                            state.eventLog.push('布大王被所有团子超越，返回终点！');
                         }
                     }
                 }
-                document.getElementById('round-num').textContent = raceState.round;
-                document.getElementById('action-hint').textContent = '本轮结束，点击开始下一轮';
-                drawTrack(raceState, document.getElementById('race-canvas'));
+                document.getElementById('round-num').textContent = state.round;
+                document.getElementById('action-hint').textContent = '本轮结束';
+                drawRaceState(state, 'free-canvas');
                 return;
             }
-
-            const char = raceState.currentOrder[raceState.currentIdx];
-            const dice = raceState.currentDices[char.id];
-            let steps = dice;
-            let skillMsg = '';
-
-            // 技能影响步数
-            if (char.id === 'moning') {
-                steps = [3,2,1][char.moningCycle % 3];
-                char.moningCycle++;
-                skillMsg = '莫宁团子固定点数';
-            } else if (char.id === 'shouan') {
-                steps = Math.random() < 0.5 ? 2 : 3;
-                skillMsg = '守岸人团子骰子限定2/3';
-            } else if (char.id === 'linnai') {
-                const r = Math.random();
-                if (r < 0.6) { steps *= 2; skillMsg = '琳奈团子双倍点数'; }
-                else if (r < 0.8) { steps = 0; skillMsg = '琳奈团子无法移动'; }
-            } else if (char.id === 'kelai' && Math.random() < 0.28) {
-                steps *= 2; skillMsg = '珂莱塔团子双倍点数';
-            } else if (char.id === 'feibi' && Math.random() < 0.5) {
-                steps += 1; skillMsg = '菲比团子额外前进1格';
-            } else if (char.id === 'dani' && char.lastDice === dice) {
-                steps += 2; skillMsg = '达妮娅团子连续相同点数额外前进2格';
-            } else if (char.id === 'qianzhi') {
-                const allDices = Object.values(raceState.currentDices);
-                if (dice === Math.min(...allDices)) { steps += 2; skillMsg = '千咲团子最小点数额外前进2格'; }
-            } else if (char.id === 'feixue' && char.metBu) {
-                steps += 1; skillMsg = '绯雪团子遇到布大王后额外前进1格';
-            } else if (char.fuluoExtra) {
-                steps += 3; skillMsg = '弗洛洛团子底层额外前进3格';
-            } else if (char.kakaExtra) {
-                steps += 3; skillMsg = '卡卡罗团子最后一名额外前进3格';
-            } else if (char.katiActivated && Math.random() < 0.6) {
-                steps += 2; skillMsg = '卡提希娅团子额外前进2格';
-            }
-            if (char.marked) {
-                const oldSteps = steps;
-                steps = Math.max(1, steps - 1);
-                char.marked = false;
-                if (steps !== oldSteps) skillMsg = (skillMsg ? skillMsg + '；' : '') + '被西格莉卡标记，少前进1格';
-            }
+            const char = state.currentOrder[state.currentIdx];
+            const dice = state.currentDices[char.id];
+            let steps = dice, skillMsg = '';
+            if (char.id === 'moning') { steps = [3,2,1][char.moningCycle%3]; char.moningCycle++; skillMsg='莫宁固定点数'; }
+            else if (char.id === 'shouan') { steps = Math.random()<0.5?2:3; skillMsg='守岸人限定2/3'; }
+            else if (char.id === 'linnai') { const r=Math.random(); if(r<0.6){steps*=2;skillMsg='琳奈双倍';} else if(r<0.8){steps=0;skillMsg='琳奈无法移动';} }
+            else if (char.id === 'kelai' && Math.random()<0.28) { steps*=2; skillMsg='珂莱塔双倍'; }
+            else if (char.id === 'feibi' && Math.random()<0.5) { steps+=1; skillMsg='菲比额外+1'; }
+            else if (char.id === 'dani' && char.lastDice===dice) { steps+=2; skillMsg='达妮娅连续相同'; }
+            else if (char.id === 'qianzhi') { if(dice===Math.min(...Object.values(state.currentDices))){steps+=2;skillMsg='千咲最小点数';} }
+            else if (char.id === 'feixue' && char.metBu) { steps+=1; skillMsg='绯雪遇布大王+1'; }
+            else if (char.fuluoExtra) { steps+=3; skillMsg='弗洛洛底层+3'; }
+            else if (char.kakaExtra) { steps+=3; skillMsg='卡卡罗最后一名+3'; }
+            else if (char.katiActivated && Math.random()<0.6) { steps+=2; skillMsg='卡提希娅+2'; }
+            if (char.marked) { steps = Math.max(1, steps-1); char.marked = false; skillMsg += ' 被标记-1'; }
             char.lastDice = dice;
-
-            const origDice = dice;
-            const stepInfo = (steps !== origDice || skillMsg) ? `（技能调整后 ${steps} 步）` : '';
-            raceState.eventLog.push(`🎲 ${char.short} 掷出 ${origDice}，前进 ${steps} 格${stepInfo}`);
-            if (skillMsg) raceState.skillTriggers.push(`${char.short}: ${skillMsg}`);
-
-            if (char.isBu) moveBu(raceState, char, steps);
-            else moveNormal(raceState, char, steps);
-
-            // 爱弥斯技能判定
-            checkAimiSkill(raceState, char);
-            if (char.id === 'aimi' && char.aimiSkillPending && !char.aimiUsed) {
-                checkAimiSkill(raceState, char);
-            }
-
-            raceState.currentIdx++;
-            document.getElementById('action-hint').textContent = `行动：${char.short}（${raceState.currentIdx}/${raceState.currentOrder.length}）`;
-            updateSkillTriggers(raceState);
-            drawTrack(raceState, document.getElementById('race-canvas'));
-
-            if (raceState.finished) {
-                clearInterval(autoTimer);
-                autoTimer = null;
+            state.eventLog.push(`🎲 ${char.short} 掷出 ${dice}，前进 ${steps} 格${skillMsg?'（'+skillMsg+'）':''}`);
+            if (skillMsg) state.skillTriggers.push(`${char.short}: ${skillMsg}`);
+            if (char.isBu) moveBu(state, char, steps); else moveNormal(state, char, steps);
+            checkAimiSkill(state, char);
+            state.currentIdx++;
+            document.getElementById('action-hint').textContent = `行动：${char.short}（${state.currentIdx}/${state.currentOrder.length}）`;
+            document.getElementById('free-skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `• ${s}`).join('<br>') || '暂无';
+            drawRaceState(state, 'free-canvas');
+            if (state.finished) {
+                clearInterval(freeAutoTimer);
+                freeAutoTimer = null;
                 document.getElementById('auto-btn').textContent = '自动播放';
-                setTimeout(showResult, 500);
+                setTimeout(() => {
+                    document.getElementById('free-race-screen').classList.add('hidden');
+                    document.getElementById('free-result-screen').classList.remove('hidden');
+                    drawRaceState(state, 'free-result-canvas');
+                    const ranking = getRanking(state).map((c,i)=>`${i+1}. ${c.name}`).join(' | ');
+                    document.getElementById('free-result-text').textContent = `最终排名：${ranking}`;
+                }, 500);
             }
         }
 
-        function updateRoundInfo(state) {
-            const div = document.getElementById('round-order');
-            if (state.currentOrder.length === 0) { div.textContent = '暂无'; return; }
-            div.textContent = `行动顺序：${state.currentOrder.map(c => `${c.short} (🎲${state.currentDices[c.id]})`).join(' → ')}`;
+        function freeInitRace() {
+            const chars = freeSelected.map(c => new Character(c));
+            const bu = new Character({ id:'bu', name:'布大王团子', short:'布', color:'#9ca3af', skill:'' });
+            bu.position = 32;
+            return { characters: chars, bu: bu, round:1, finished:false, currentOrder:[], currentDices:{}, currentIdx:0, eventLog:[], skillTriggers:[] };
         }
 
-        function updateSkillTriggers(state) {
-            document.getElementById('skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `<div>• ${s}</div>`).join('') || '暂无';
+        // ================= 锦标赛逻辑 =================
+        let tournament = {
+            groups: { A:[], B:[], C:[] },
+            promoted: {},
+            eliminated: { X:[], Y:[] },
+            matches: [],
+            currentMatchIdx: 0,
+            coins: 10000,
+            winCount: 0,
+            totalMatches: 13,
+            bet: null,
+            currentRaceState: null,
+            raceStepTimer: null,
+        };
+
+        function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+
+        function showGroupInfo(match) {
+            const container = document.getElementById('group-info');
+            if (!match) { container.innerHTML = ''; return; }
+            const chars = match.chars;
+            let html = '<h3 class="font-bold text-white mb-2">📢 当前分组：</h3>';
+            chars.forEach(c => {
+                html += `<div><span style="color:${c.color}">${c.short}</span> ${c.name}：${c.skill}</div>`;
+            });
+            container.innerHTML = html;
         }
 
-        function showSelectedSkills() {
-            document.getElementById('selected-skills').innerHTML = selectedChars.map(c => `<div><span style="color:${c.color}">${c.short}</span>：${c.skill}</div>`).join('');
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${tournament.currentMatchIdx}/${tournament.totalMatches}`;
         }
 
-        // ==================== 可视化 ====================
-        function drawTrack(state, canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const cellWidth = (canvas.width - 100) / (TILES + 1);
-            const yBase = 180;
-            for (let i = 0; i <= TILES; i++) {
-                const x = 50 + i * cellWidth;
-                ctx.fillStyle = '#1f2937';
-                ctx.fillRect(x, yBase - 20, cellWidth - 2, 40);
-                ctx.fillStyle = '#6b7280';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(i, x + cellWidth / 2, yBase + 5);
-                if (SPECIAL_TILES.rift.includes(i)) { ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x + cellWidth / 2, yBase - 30, 8, 0, 2 * Math.PI); ctx.fill(); }
-                if (SPECIAL_TILES.block.includes(i)) { ctx.fillStyle = '#f59e0b'; ctx.fillText('◀', x + cellWidth / 2, yBase - 30); }
-                if (SPECIAL_TILES.boost.includes(i)) { ctx.fillStyle = '#10b981'; ctx.fillText('▶', x + cellWidth / 2, yBase - 30); }
-            }
-            const allChars = [...state.characters, state.bu];
-            const posMap = {};
-            allChars.forEach(c => { if (!posMap[c.position]) posMap[c.position] = []; posMap[c.position].push(c); });
-            for (let pos in posMap) {
-                const bottom = posMap[pos].find(c => c.stackedBelow === null);
-                if (!bottom) continue;
-                const ordered = [];
-                let cur = bottom;
-                while (cur) { ordered.push(cur); cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null; }
-                ordered.forEach((c, idx) => {
-                    const x = 50 + pos * cellWidth + cellWidth / 2;
-                    const y = yBase - 60 - idx * 22;
-                    ctx.fillStyle = c.color;
-                    ctx.font = 'bold 16px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(c.short, x, y);
+        function generateTournament() {
+            const shuffled = shuffle([...allCharacters]);
+            const A = shuffled.slice(0,6), B = shuffled.slice(6,12), C = shuffled.slice(12,18);
+            tournament.groups = { A, B, C };
+            tournament.matches = [];
+            ['A','B','C'].forEach(g => {
+                tournament.matches.push({ type:'小组赛', group:g, match:1, chars: tournament.groups[g], advance:2 });
+                tournament.matches.push({ type:'小组赛', group:g, match:2, chars: tournament.groups[g], advance:2 });
+            });
+            tournament.matches.push({ type:'谢幕赛', group:'X', match:1, chars: [], advance:0, description:'第一轮谢幕赛' });
+            tournament.matches.push({ type:'淘汰赛', group:'D', match:1, chars: [], advance:1 });
+            tournament.matches.push({ type:'淘汰赛', group:'D', match:2, chars: [], advance:2 });
+            tournament.matches.push({ type:'淘汰赛', group:'E', match:1, chars: [], advance:1 });
+            tournament.matches.push({ type:'淘汰赛', group:'E', match:2, chars: [], advance:2 });
+            tournament.matches.push({ type:'谢幕赛', group:'Y', match:1, chars: [], advance:0, description:'第二轮谢幕赛' });
+            tournament.matches.push({ type:'总决赛', group:'F', match:1, chars: [], advance:6 });
+            tournament.currentMatchIdx = 0;
+            tournament.coins = 10000;
+            tournament.winCount = 0;
+            tournament.promoted = {};
+            document.getElementById('coin-amount').textContent = tournament.coins;
+            document.getElementById('win-count').textContent = tournament.winCount;
+            document.getElementById('progress').textContent = `0/13`;
+            updateMatchTitle();
+        }
+
+        function updateMatchTitle() {
+            const match = tournament.matches[tournament.currentMatchIdx];
+            if (!match) return;
+            const title = match.description || `${match.type} ${match.group}组 第${match.match}场`;
+            document.getElementById('tournament-stage').textContent = title;
+        }
+
+        function createRaceState(chars) {
+            const raceChars = chars.map(c => new Character(c));
+            const bu = new Character({ id:'bu', name:'布大王团子', short:'布', color:'#9ca3af' });
+            bu.position = 32;
+            const state = {
+                characters: raceChars,
+                bu: bu,
+                round: 1, finished: false,
+                currentOrder: [], currentDices: {}, currentIdx: 0,
+                eventLog: [], skillTriggers: []
+            };
+            const order = shuffle([...raceChars]);
+            const dices = {};
+            order.forEach(c => dices[c.id] = Math.floor(Math.random()*3)+1);
+            state.currentOrder = order;
+            state.currentDices = dices;
+            setTileStack(state, 0, [...order].reverse());
+            // 初始化信息面板
+            document.getElementById('t-round-order').textContent = `行动顺序：${order.map(c=>`${c.short}(🎲${dices[c.id]})`).join(' → ')}`;
+            document.getElementById('t-skill-triggers').innerHTML = '暂无';
+            // 显示参战团子技能
+            document.getElementById('t-selected-skills').innerHTML = raceChars.map(c => `<div><span style="color:${c.color}">${c.short}</span>：${c.skill}</div>`).join('');
+            return state;
+        }
+
+        function tournamentRaceNextStep() {
+            const state = tournament.currentRaceState;
+            if (!state || state.finished) return;
+            if (state.currentOrder.length === 0) {
+                // 新回合
+                const participants = [...state.characters.filter(c => !c.finished)];
+                if (state.round >= 3) participants.push(state.bu);
+                const order = shuffle(participants);
+                const dices = {};
+                order.forEach(c => dices[c.id] = c.isBu ? Math.floor(Math.random()*6)+1 : Math.floor(Math.random()*3)+1);
+                state.currentOrder = order;
+                state.currentDices = dices;
+                state.currentIdx = 0;
+                state.skillTriggers = [];
+                state.characters.forEach(c => { c.fuluoExtra = false; c.kakaExtra = false; });
+                state.characters.forEach(c => {
+                    if (c.id === 'fuluo' && c.stackedBelow === null && c.stackedAbove.length > 0) c.fuluoExtra = true;
+                    if (c.id === 'kaka' && isLastPlace(state, c)) c.kakaExtra = true;
                 });
+                const xige = order.find(c => c.id === 'xige');
+                if (xige && state.round > 1) {
+                    const ranking = getRanking(state);
+                    const idx = ranking.indexOf(xige);
+                    if (idx > 0) ranking.slice(0, idx).reverse().slice(0,2).forEach(t => t.marked = true);
+                }
+                document.getElementById('t-round-order').textContent = `行动顺序：${order.map(c=>`${c.short}(🎲${dices[c.id]})`).join(' → ')}`;
+                document.getElementById('t-skill-triggers').innerHTML = '暂无';
+                drawRaceState(state, 'tournament-canvas');
+                return;
+            }
+            if (state.currentIdx >= state.currentOrder.length) {
+                checkKatiSkill(state);
+                state.round++;
+                state.currentOrder = [];
+                state.currentIdx = 0;
+                if (state.round >= 3) {
+                    const active = state.characters.filter(c => !c.finished);
+                    if (active.length > 0) {
+                        const last = getRanking(state).pop();
+                        if (last && last.position > state.bu.position) {
+                            detachStack(state.bu);
+                            state.bu.position = TILES;
+                            state.bu.stackedBelow = null;
+                            state.bu.stackedAbove = [];
+                            state.eventLog.push('布大王被超越，返回终点');
+                        }
+                    }
+                }
+                drawRaceState(state, 'tournament-canvas');
+                return;
+            }
+            const char = state.currentOrder[state.currentIdx];
+            const dice = state.currentDices[char.id];
+            let steps = dice, skillMsg = '';
+            if (char.id === 'moning') { steps = [3,2,1][char.moningCycle%3]; char.moningCycle++; skillMsg='莫宁固定点数'; }
+            else if (char.id === 'shouan') { steps = Math.random()<0.5?2:3; skillMsg='守岸人限定2/3'; }
+            else if (char.id === 'linnai') { const r=Math.random(); if(r<0.6){steps*=2;skillMsg='琳奈双倍';} else if(r<0.8){steps=0;skillMsg='琳奈无法移动';} }
+            else if (char.id === 'kelai' && Math.random()<0.28) { steps*=2; skillMsg='珂莱塔双倍'; }
+            else if (char.id === 'feibi' && Math.random()<0.5) { steps+=1; skillMsg='菲比额外+1'; }
+            else if (char.id === 'dani' && char.lastDice===dice) { steps+=2; skillMsg='达妮娅连续相同'; }
+            else if (char.id === 'qianzhi') { if(dice===Math.min(...Object.values(state.currentDices))){steps+=2;skillMsg='千咲最小点数';} }
+            else if (char.id === 'feixue' && char.metBu) { steps+=1; skillMsg='绯雪遇布大王+1'; }
+            else if (char.fuluoExtra) { steps+=3; skillMsg='弗洛洛底层+3'; }
+            else if (char.kakaExtra) { steps+=3; skillMsg='卡卡罗最后一名+3'; }
+            else if (char.katiActivated && Math.random()<0.6) { steps+=2; skillMsg='卡提希娅+2'; }
+            if (char.marked) { steps = Math.max(1, steps-1); char.marked = false; skillMsg += ' 被标记-1'; }
+            char.lastDice = dice;
+            if (skillMsg) state.skillTriggers.push(`${char.short}: ${skillMsg}`);
+            if (char.isBu) moveBu(state, char, steps); else moveNormal(state, char, steps);
+            checkAimiSkill(state, char);
+            state.currentIdx++;
+            document.getElementById('t-skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `• ${s}`).join('<br>') || '暂无';
+            drawRaceState(state, 'tournament-canvas');
+            if (state.finished) {
+                clearInterval(tournament.raceStepTimer);
+                tournament.raceStepTimer = null;
+                document.getElementById('tournament-auto-btn').textContent = '自动播放';
+                finishCurrentMatch();
             }
         }
 
-        function showResult() {
-            document.getElementById('race-screen').classList.add('hidden');
-            document.getElementById('result-screen').classList.remove('hidden');
-            drawTrack(raceState, document.getElementById('result-canvas'));
-            const ranking = getRanking(raceState).map((c, i) => `${i+1}. ${c.name}`).join(' | ');
-            document.getElementById('result-text').textContent = `最终排名：${ranking}`;
+        function finishCurrentMatch() {
+            const state = tournament.currentRaceState;
+            const match = tournament.matches[tournament.currentMatchIdx];
+            const ranking = getRanking(state).map(c => c.id);
+            const existing = (match.type==='小组赛' && match.match===2) ? (tournament.promoted[match.group] || []) :
+                             (match.group==='D' || match.group==='E') ? (match.match===2 ? (tournament.promoted[match.group] || []) : []) : [];
+            const promoted = [];
+            for (const id of ranking) {
+                if (promoted.length >= match.advance) break;
+                if (!existing.includes(id)) promoted.push(id);
+            }
+            match.result = { ranking, promoted };
+
+            if (tournament.bet) {
+                const bet = tournament.bet;
+                const betAmount = Math.floor(tournament.coins * bet.ratio);
+                if (betAmount > 0) {
+                    const champion = ranking[0];
+                    if (bet.target === champion) {
+                        const winCoins = Math.floor(betAmount * parseFloat(tournament.odds[bet.target]));
+                        tournament.coins += winCoins - betAmount;
+                        tournament.winCount++;
+                    } else {
+                        const refund = Math.floor(betAmount * 0.8);
+                        tournament.coins = tournament.coins - betAmount + refund;
+                    }
+                }
+                tournament.bet = null;
+            }
+            tournament.coins += 3000;
+            document.getElementById('coin-amount').textContent = tournament.coins;
+            document.getElementById('win-count').textContent = tournament.winCount;
+            updateProgress();
+
+            if (match.type === '小组赛') {
+                if (!tournament.promoted[match.group]) tournament.promoted[match.group] = [];
+                tournament.promoted[match.group].push(...promoted);
+                if (match.match === 2) {
+                    const eliminated = match.chars.filter(c => !tournament.promoted[match.group].includes(c.id));
+                    tournament.eliminated.X = tournament.eliminated.X.concat(eliminated);
+                }
+            } else if (match.group === 'X') {
+            } else if (match.group === 'D' || match.group === 'E') {
+                if (!tournament.promoted[match.group]) tournament.promoted[match.group] = [];
+                tournament.promoted[match.group].push(...promoted);
+                if (match.match === 2) {
+                    const eliminated = match.chars.filter(c => !tournament.promoted[match.group].includes(c.id));
+                    tournament.eliminated.Y = tournament.eliminated.Y.concat(eliminated);
+                }
+            }
+
+            const championName = allCharacters.find(c => c.id === ranking[0])?.name || ranking[0];
+            const promotedNames = promoted.map(id => allCharacters.find(c => c.id === id)?.name || id).join(', ');
+            document.getElementById('tournament-result').textContent = `冠军：${championName}  |  晋级：${promotedNames || '无'}`;
+            document.getElementById('tournament-race-control').classList.add('hidden');
+
+            tournament.currentMatchIdx++;
+            if (tournament.currentMatchIdx < tournament.matches.length) {
+                prepareNextMatch();
+                setupBet(tournament.matches[tournament.currentMatchIdx]);
+            } else {
+                document.getElementById('final-win-count').textContent = `押注获胜次数：${tournament.winCount}`;
+                document.getElementById('final-coin').textContent = `最终持有投注币：${tournament.coins}`;
+                document.getElementById('final-result').classList.remove('hidden');
+                document.getElementById('betting-panel').classList.add('hidden');
+            }
         }
 
-        document.getElementById('next-step-btn').addEventListener('click', nextStep);
-        document.getElementById('auto-btn').addEventListener('click', () => {
-            if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('auto-btn').textContent = '自动播放'; }
-            else {
-                document.getElementById('auto-btn').textContent = '停止';
-                autoTimer = setInterval(() => { if (!raceState || raceState.finished) { clearInterval(autoTimer); autoTimer = null; return; } nextStep(); }, 800);
+        function prepareNextMatch() {
+            const next = tournament.matches[tournament.currentMatchIdx];
+            if (next.chars.length > 0) return;
+            if (next.group === 'X') {
+                next.chars = tournament.eliminated.X.slice(0,6);
+            } else if (next.group === 'D') {
+                const allFirstMatchPromoted = [];
+                ['A','B','C'].forEach(g => {
+                    const arr = tournament.promoted[g] || [];
+                    if (arr.length >= 2) allFirstMatchPromoted.push(arr[0], arr[1]);
+                });
+                next.chars = allFirstMatchPromoted.slice(0,6).map(id => allCharacters.find(c => c.id === id)).filter(Boolean);
+            } else if (next.group === 'E') {
+                const allSecondMatchPromoted = [];
+                ['A','B','C'].forEach(g => {
+                    const arr = tournament.promoted[g] || [];
+                    if (arr.length >= 4) allSecondMatchPromoted.push(arr[2], arr[3]);
+                });
+                next.chars = allSecondMatchPromoted.slice(0,6).map(id => allCharacters.find(c => c.id === id)).filter(Boolean);
+            } else if (next.group === 'Y') {
+                next.chars = tournament.eliminated.Y.slice(0,6);
+            } else if (next.group === 'F') {
+                const dPromoted = tournament.promoted['D'] || [];
+                const ePromoted = tournament.promoted['E'] || [];
+                next.chars = [...dPromoted, ...ePromoted].slice(0,6).map(id => allCharacters.find(c => c.id === id)).filter(Boolean);
+            }
+        }
+
+        function setupBet(match) {
+            updateMatchTitle();
+            showGroupInfo(match);
+            const odds = {};
+            match.chars.forEach(c => {
+                odds[c.id] = (Math.random() * (2.60 - 1.30) + 1.30).toFixed(2);
+            });
+            tournament.odds = odds;
+            document.getElementById('odds-list').innerHTML = match.chars.map(c => `<div><span style="color:${c.color}">${c.short}</span> ${odds[c.id]}</div>`).join('');
+            document.getElementById('bet-target').innerHTML = match.chars.map(c => `<option value="${c.id}">${c.short}</option>`).join('');
+            document.getElementById('betting-panel').classList.remove('hidden');
+            document.getElementById('tournament-race-control').classList.add('hidden');
+            document.getElementById('tournament-race-info').classList.add('hidden');
+            document.getElementById('tournament-result').textContent = '';
+            updateProgress();
+        }
+
+        document.getElementById('confirm-bet-btn').addEventListener('click', () => {
+            const targetId = document.getElementById('bet-target').value;
+            const ratio = parseFloat(document.getElementById('bet-ratio').value);
+            tournament.bet = { target: targetId, ratio: ratio };
+            document.getElementById('betting-panel').classList.add('hidden');
+            document.getElementById('tournament-race-control').classList.remove('hidden');
+            document.getElementById('tournament-race-info').classList.remove('hidden');
+            const match = tournament.matches[tournament.currentMatchIdx];
+            tournament.currentRaceState = createRaceState(match.chars);
+            drawRaceState(tournament.currentRaceState, 'tournament-canvas');
+            document.getElementById('tournament-result').textContent = '';
+        });
+
+        document.getElementById('tournament-next-step').addEventListener('click', tournamentRaceNextStep);
+        document.getElementById('tournament-auto-btn').addEventListener('click', () => {
+            const btn = document.getElementById('tournament-auto-btn');
+            if (tournament.raceStepTimer) {
+                clearInterval(tournament.raceStepTimer);
+                tournament.raceStepTimer = null;
+                btn.textContent = '自动播放';
+            } else {
+                btn.textContent = '停止';
+                tournament.raceStepTimer = setInterval(tournamentRaceNextStep, 200);
             }
         });
-        document.getElementById('reset-btn').addEventListener('click', () => location.reload());
-        document.getElementById('start-btn').addEventListener('click', () => {
-            if (selectedChars.length !== 6) return;
-            raceState = initRace();
-            setupFirstRound(raceState);
-            document.getElementById('selection-screen').classList.add('hidden');
-            document.getElementById('race-screen').classList.remove('hidden');
-            showSelectedSkills();
-            drawTrack(raceState, document.getElementById('race-canvas'));
+
+        // ================= 模式切换 =================
+        document.getElementById('free-mode-btn').addEventListener('click', () => {
+            document.getElementById('mode-screen').classList.add('hidden');
+            document.getElementById('free-selection').classList.remove('hidden');
+            freeRenderSelection();
+        });
+        document.getElementById('tournament-mode-btn').addEventListener('click', () => {
+            document.getElementById('mode-screen').classList.add('hidden');
+            document.getElementById('tournament-screen').classList.remove('hidden');
+            generateTournament();
+            setupBet(tournament.matches[0]);
+        });
+        document.getElementById('free-start-btn').addEventListener('click', () => {
+            freeRace = freeInitRace();
+            freeSetupFirstRound(freeRace);
+            document.getElementById('free-selection').classList.add('hidden');
+            document.getElementById('free-race-screen').classList.remove('hidden');
+            document.getElementById('free-selected-skills').innerHTML = freeSelected.map(c => `<div><span style="color:${c.color}">${c.short}</span>：${c.skill}</div>`).join('');
+            drawRaceState(freeRace, 'free-canvas');
             document.getElementById('round-num').textContent = '1';
             document.getElementById('action-hint').textContent = '点击「下一步」开始第一轮';
-            document.getElementById('skill-triggers').innerHTML = '暂无';
         });
-
-        function initRace() {
-            const chars = selectedChars.map(c => new Character(c));
-            const bu = new Character({ id: 'bu', name: '布大王团子', short: '布', color: '#9ca3af', skill: '' });
-            bu.position = TILES;
-            return { characters: chars, bu: bu, round: 1, finished: false, currentOrder: [], currentDices: {}, currentIdx: 0, eventLog: [], skillTriggers: [] };
-        }
-
-        renderSelection();
+        document.getElementById('next-step-btn').addEventListener('click', freeNextStep);
+        document.getElementById('auto-btn').addEventListener('click', () => {
+            if (freeAutoTimer) { clearInterval(freeAutoTimer); freeAutoTimer = null; document.getElementById('auto-btn').textContent='自动播放'; }
+            else { document.getElementById('auto-btn').textContent='停止'; freeAutoTimer = setInterval(freeNextStep, 800); }
+        });
+        document.getElementById('free-reset-btn').addEventListener('click', () => location.reload());
     </script>
 </body>
 </html>
