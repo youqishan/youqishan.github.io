@@ -36,15 +36,9 @@
                 <i class="fa-solid fa-play mr-2"></i>开始比赛
             </button>
         </div>
-        <!-- 18位团子全部技能展示 -->
         <div class="bg-gray-800 p-4 rounded-xl">
             <h3 class="font-bold text-green-400 mb-2 text-lg">📜 全部团子技能一览</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-300">
-                <script>
-                    // 此部分将在渲染时由JS填充，避免直接写在HTML中导致太长
-                </script>
-                <div id="all-skills-container"></div>
-            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-300" id="all-skills-container"></div>
         </div>
     </div>
 
@@ -100,6 +94,11 @@
         </div>
         <!-- 分组提示 -->
         <div id="group-info" class="bg-gray-800 p-4 rounded-xl mb-4 text-sm"></div>
+        <!-- 投注规则说明 -->
+        <div class="bg-gray-800 p-4 rounded-xl mb-4 text-sm text-gray-300">
+            <h4 class="font-bold text-yellow-400 mb-1">📢 投注规则</h4>
+            <p>投注成功按照赔率结算；投注失败返还 80%投注币，每轮结束额外获得 3000 投注币。</p>
+        </div>
         <!-- 比赛前投注面板 -->
         <div id="betting-panel" class="bg-gray-800 p-6 rounded-xl mb-6">
             <h3 class="text-xl font-bold mb-3">📊 本场赔率</h3>
@@ -124,7 +123,7 @@
             <button id="tournament-auto-btn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-full transition ml-4">自动播放</button>
         </div>
         <canvas id="tournament-canvas" width="900" height="280" class="mt-4 mx-auto"></canvas>
-        <!-- 比赛信息面板（与自由竞赛相同） -->
+        <!-- 比赛信息面板 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6" id="tournament-race-info">
             <div class="info-panel">
                 <h3 class="font-bold text-yellow-400 mb-2">📋 当前轮次信息</h3>
@@ -168,7 +167,6 @@
             { id: 'kaka', name: '卡卡罗团子', short: '卡卡', color: '#d8b4fe', skill: '回合开始时若在最后一名，额外前进3格。' }
         ];
 
-        // ================= 通用逻辑 =================
         const TILES = 32;
         const SPECIAL_TILES = {
             rift: [6, 20], block: [10, 28], boost: [3, 11, 16, 23]
@@ -311,9 +309,18 @@
 
         function moveNormal(state, char, steps) {
             let newPos = char.position + steps;
-            if (newPos >= TILES) { newPos = TILES; char.finished = true; state.finished = true; }
+            if (newPos >= TILES) {
+                newPos = TILES;
+                // 将该团子及其上方所有团子标记为完成
+                const stack = detachStack(char);
+                stack.forEach(c => c.finished = true);
+                placeStack(state, stack, TILES);
+                state.finished = true;
+                return; // 结束移动，不再触发特殊格子
+            }
             newPos = Math.min(TILES, Math.max(0, newPos));
-            placeStack(state, detachStack(char), newPos);
+            const charStack = detachStack(char);
+            placeStack(state, charStack, newPos);
             applySpecialTile(state, char, newPos);
         }
 
@@ -359,13 +366,23 @@
             const pmap = {};
             all.forEach(c => { if(!pmap[c.position]) pmap[c.position]=[]; pmap[c.position].push(c); });
             for(let p in pmap){
-                const bottom = pmap[p].find(c=>c.stackedBelow===null);
-                if(!bottom) continue;
-                const ordered = []; let cur=bottom;
-                while(cur){ ordered.push(cur); cur=cur.stackedAbove.length>0?cur.stackedAbove[0]:null; }
-                ordered.forEach((c,idx)=>{
-                    ctx.fillStyle=c.color; ctx.font='bold 16px sans-serif'; ctx.textAlign='center';
-                    ctx.fillText(c.short, 50+p*cw+cw/2, y0-60-idx*22);
+                const arr = pmap[p];
+                // 尝试找出底部，如果找不到则直接按数组顺序绘制
+                let ordered = [];
+                const bottom = arr.find(c => c.stackedBelow === null);
+                if (bottom) {
+                    let cur = bottom;
+                    while (cur) { ordered.push(cur); cur = cur.stackedAbove.length > 0 ? cur.stackedAbove[0] : null; }
+                } else {
+                    ordered = arr;
+                }
+                ordered.forEach((c, idx) => {
+                    const x = 50 + p * cw + cw/2;
+                    const y = y0 - 60 - idx * 22;
+                    ctx.fillStyle = c.color;
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(c.short, x, y);
                 });
             }
         }
@@ -384,11 +401,7 @@
                     <div class="text-xs mt-1 text-gray-300">${c.name}</div>
                 </div>
             `).join('');
-            // 填充18个团子技能
-            const skillContainer = document.getElementById('all-skills-container');
-            if (skillContainer) {
-                skillContainer.innerHTML = allCharacters.map(c => `<div><span style="color:${c.color}">${c.short}</span> ${c.name}：${c.skill}</div>`).join('');
-            }
+            document.getElementById('all-skills-container').innerHTML = allCharacters.map(c => `<div><span style="color:${c.color}">${c.short}</span> ${c.name}：${c.skill}</div>`).join('');
         }
 
         window.freeToggleChar = function(id) {
@@ -499,11 +512,6 @@
             state.eventLog.push(`🎲 ${char.short} 掷出 ${dice}，前进 ${steps} 格${skillMsg?'（'+skillMsg+'）':''}`);
             if (skillMsg) state.skillTriggers.push(`${char.short}: ${skillMsg}`);
             if (char.isBu) moveBu(state, char, steps); else moveNormal(state, char, steps);
-            checkAimiSkill(state, char);
-            state.currentIdx++;
-            document.getElementById('action-hint').textContent = `行动：${char.short}（${state.currentIdx}/${state.currentOrder.length}）`;
-            document.getElementById('free-skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `• ${s}`).join('<br>') || '暂无';
-            drawRaceState(state, 'free-canvas');
             if (state.finished) {
                 clearInterval(freeAutoTimer);
                 freeAutoTimer = null;
@@ -515,7 +523,13 @@
                     const ranking = getRanking(state).map((c,i)=>`${i+1}. ${c.name}`).join(' | ');
                     document.getElementById('free-result-text').textContent = `最终排名：${ranking}`;
                 }, 500);
+                return;
             }
+            checkAimiSkill(state, char);
+            state.currentIdx++;
+            document.getElementById('action-hint').textContent = `行动：${char.short}（${state.currentIdx}/${state.currentOrder.length}）`;
+            document.getElementById('free-skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `• ${s}`).join('<br>') || '暂无';
+            drawRaceState(state, 'free-canvas');
         }
 
         function freeInitRace() {
@@ -607,10 +621,8 @@
             state.currentOrder = order;
             state.currentDices = dices;
             setTileStack(state, 0, [...order].reverse());
-            // 初始化信息面板
             document.getElementById('t-round-order').textContent = `行动顺序：${order.map(c=>`${c.short}(🎲${dices[c.id]})`).join(' → ')}`;
             document.getElementById('t-skill-triggers').innerHTML = '暂无';
-            // 显示参战团子技能
             document.getElementById('t-selected-skills').innerHTML = raceChars.map(c => `<div><span style="color:${c.color}">${c.short}</span>：${c.skill}</div>`).join('');
             return state;
         }
@@ -619,7 +631,6 @@
             const state = tournament.currentRaceState;
             if (!state || state.finished) return;
             if (state.currentOrder.length === 0) {
-                // 新回合
                 const participants = [...state.characters.filter(c => !c.finished)];
                 if (state.round >= 3) participants.push(state.bu);
                 const order = shuffle(participants);
@@ -684,16 +695,17 @@
             char.lastDice = dice;
             if (skillMsg) state.skillTriggers.push(`${char.short}: ${skillMsg}`);
             if (char.isBu) moveBu(state, char, steps); else moveNormal(state, char, steps);
-            checkAimiSkill(state, char);
-            state.currentIdx++;
-            document.getElementById('t-skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `• ${s}`).join('<br>') || '暂无';
-            drawRaceState(state, 'tournament-canvas');
             if (state.finished) {
                 clearInterval(tournament.raceStepTimer);
                 tournament.raceStepTimer = null;
                 document.getElementById('tournament-auto-btn').textContent = '自动播放';
                 finishCurrentMatch();
+                return;
             }
+            checkAimiSkill(state, char);
+            state.currentIdx++;
+            document.getElementById('t-skill-triggers').innerHTML = state.skillTriggers.slice().reverse().map(s => `• ${s}`).join('<br>') || '暂无';
+            drawRaceState(state, 'tournament-canvas');
         }
 
         function finishCurrentMatch() {
@@ -737,7 +749,6 @@
                     const eliminated = match.chars.filter(c => !tournament.promoted[match.group].includes(c.id));
                     tournament.eliminated.X = tournament.eliminated.X.concat(eliminated);
                 }
-            } else if (match.group === 'X') {
             } else if (match.group === 'D' || match.group === 'E') {
                 if (!tournament.promoted[match.group]) tournament.promoted[match.group] = [];
                 tournament.promoted[match.group].push(...promoted);
@@ -747,9 +758,16 @@
                 }
             }
 
-            const championName = allCharacters.find(c => c.id === ranking[0])?.name || ranking[0];
-            const promotedNames = promoted.map(id => allCharacters.find(c => c.id === id)?.name || id).join(', ');
-            document.getElementById('tournament-result').textContent = `冠军：${championName}  |  晋级：${promotedNames || '无'}`;
+            // 构建完整排名播报
+            const allRanked = ranking.map((id, idx) => {
+                const c = allCharacters.find(ch => ch.id === id);
+                const name = c ? c.name : id;
+                const isPromoted = promoted.includes(id);
+                const status = match.advance > 0 ? (isPromoted ? '晋级' : '未晋级') : '';
+                return `第${idx+1}名：${name} 团子${status ? ' | ' + status : ''}`;
+            }).join('<br>');
+
+            document.getElementById('tournament-result').innerHTML = allRanked;
             document.getElementById('tournament-race-control').classList.add('hidden');
 
             tournament.currentMatchIdx++;
@@ -835,7 +853,6 @@
             }
         });
 
-        // ================= 模式切换 =================
         document.getElementById('free-mode-btn').addEventListener('click', () => {
             document.getElementById('mode-screen').classList.add('hidden');
             document.getElementById('free-selection').classList.remove('hidden');
