@@ -1,0 +1,2 @@
+这一文本文字量比较少，因此我将其用于测试能否正常打开txt文本
+This text contains relatively few words, so I use it to test whether TXT files can be opened normally.

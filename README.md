@@ -1,76 +1,44 @@
-# 👋 youqishan 的个人主页 / youqishan's Personal Homepage
+# youqishan.github.io
 
-Hi！这是我的个人主页！  
-Hey! This is my personal homepage to share my works. Feel free to look around!
+个人主页 + 网页备忘录，由 GitHub Pages 托管，访问地址：https://youqishan.github.io/
 
----
+## 目录结构
 
-## 🌟 有什么好玩的？ / What's Inside?
+```
+├── index.html        主页（备忘录风格）
+├── memos.js          主页「最近备忘」的数据源，编辑它即可增删备忘
+├── favicon.svg       站点图标
+├── my_work/          日记月历与日记阅读器
+├── study/            课程笔记列表与阅读器
+├── travel-map/       旅行地图编辑器（Vite 构建产物，直接部署）
+└── _config.yml       GitHub Pages 的 Jekyll 配置（本站实际由 .nojekyll 跳过 Jekyll）
+```
 
-- 🏠 **首页介绍**：一张我的虚拟头像。  
-  **Hero Section**: A virtual photo of me and a quick intro.
-- 🖼️ **图片轮播**：放了几张我喜欢的照片，每隔 2 秒自动切换，你也可以手动点箭头或小圆点翻看。  
-  **Image Carousel**: A few of my favorite photos that auto-scroll every 2 seconds, or you can click arrows/dots to browse.
-- 📚 **学习 & 兴趣**：现在在学 Python 和建站...  
-  **Studies & Hobbies**: Learning Python and web building...
-- ✨ **小动画**：卡片悬停会微微浮起来，导航栏固定在上方，看着挺舒服的。  
-  **Subtle Animations**: Cards lift on hover, and the navbar sticks at the top for easy navigation.
-- 📱 **手机也能看**：在手机上排版也不会乱。  
-  **Responsive**: Layout adjusts nicely on phones.
+## 本地预览
 
----
+```bash
+# 任选其一
+python3 -m http.server 8000
+npx serve .
+```
 
-## 🚀 直接看效果 / Live Site
+然后打开 http://localhost:8000 。
 
-点这个链接就能打开：
-   ```bash
-   youqishan.github.io
-   ```
-Just open the link above.
+## 修改旅行地图编辑器后重新构建
 
-## 📁 文件长这样 / File Structure
-youqishan.github.io/
+源码位于仓库外的工作区目录 `旅行地图编辑器/travel-map/`：
 
-├── index.html # 网页本体
+```bash
+cd 旅行地图编辑器/travel-map
+npm install        # 首次
+npm run build      # 产物输出到 dist/
+rm -rf ../youqishan.github.io/travel-map
+cp -r dist ../youqishan.github.io/travel-map
+```
 
-├── virtual_photo.jpg # 我的头像
+之后按交付指南提交并推送到 GitHub 即可。
 
-├── images/ # 轮播用的图
+## 数据说明
 
-└── README.md 
-
-## 🛠️ 如果你也想整一个 / How to Use or Remix
-
-1. **下载代码**  
-   ```bash
-   git clone https://github.com/youqishan/youqishan.github.io.git
-
-2. **把图换成你的**
-
-把自己的头像存成 virtual_photo.jpg 放到根目录。
-Save your avatar as virtual_photo.jpg and place it in the root directory.
-
-轮播图片在 index.html 里找到 **图片轮播区**，把 **img src="..."** 的链接换成你的图。
-For the carousel images, locate in index.html, replace the link in **img src="..."** with your image path, and add the image to the directory
-
-3. **改个人信息**
-打开 index.html，把所有 youqishan 相关的文字改成你自己的信息
-Open index.html and replace all text related to youqishan with your own information, such as your name, introduction, major and other relevant details.
-
-4. **本地看效果**
-直接双击 index.html 用浏览器打开就能预览了。
-Just double-click index.html to open it in your browser for preview.
-
-5. **放到 GitHub Pages**
-把整个文件夹推到一个叫 你的用户名.github.io 的仓库，等一两分钟就能在网上看到了，跟我的这个一样。
-Push the entire folder to a repository named yourusername.github.io, wait for a minute or two, and you'll be able to view it online just like mine.
-
-## 🎨 轮播小设定 / Carousel Tweaks
-切换速度：在最后面的 <script> 里找到 autoIntervalTime = 2000;，数字是毫秒，改成你想要的时间就行。
-Speed: Find autoIntervalTime = 2000; in the script, change the number (ms) to adjust switch speed.
-
-动画快慢：轮播轨道上有个 duration-500，改成 duration-1000 会让过渡更慢一点。
-Transition Speed: Change duration-500 on the slider track class (e.g., duration-1000 for slower).
-
-图片高度：每张图片上有 h-64 md:h-96，这是高度设定，可以调。
-Image Height: Adjust the classes h-64 and md:h-96 on the images.
+- 旅行地图编辑器的所有数据保存在浏览器 localStorage，导出 ZIP 可备份、可分享；
+- 主页备忘为纯文本数据，写在 `memos.js` 里，不涉及隐私。
